@@ -481,15 +481,43 @@ export const OrderDetailView: React.FC<OrderDetailProps> = ({ orderId }) => {
             <h3 className="font-display font-bold text-sm text-emerald-strong mb-4">Packaged takeaways Details</h3>
 
             <div className="divide-y divide-emerald-deep/6">
-              {order.items.map((it, iIdx) => (
-                <div key={iIdx} className="py-3 flex items-center justify-between text-xs first:pt-0 last:pb-0">
-                  <div className="max-w-xs truncate">
-                    <p className="font-bold text-emerald-strong truncate">{it.name}</p>
-                    <span className="text-[10px] text-muted-grey block mt-0.5">Spoons: {it.spoonsCount} request • Quantity: {it.quantity}x</span>
+              {order.items.map((it, iIdx) => {
+                const hasCustom = it.customFoodType || it.customProtein || it.customDrink;
+                return (
+                  <div key={iIdx} className="py-3.5 first:pt-0 last:pb-0 text-xs">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-emerald-strong truncate">{it.name}</p>
+                        <span className="text-[10px] text-muted-grey block mt-0.5">Plastic Spoons: {it.spoonsCount} • Quantity: {it.quantity}x</span>
+                      </div>
+                      <Currency kobo={it.priceKobo * it.quantity} className="font-mono text-ink-deep font-bold shrink-0" />
+                    </div>
+                    {hasCustom && (
+                      <div className="bg-amber-50/40 border border-amber-200/50 p-2.5 rounded-xl text-[10px] text-amber-900 mt-2 space-y-1 max-w-xs">
+                        <p className="font-extrabold uppercase tracking-widest text-[8px] text-amber-950 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                          <span>Plate Customization</span>
+                        </p>
+                        {it.customFoodType && (
+                          <p>
+                            <span className="font-bold text-amber-800">Food Type:</span> {it.customFoodType} ({it.customFoodSpoons || 3} Spoons)
+                          </p>
+                        )}
+                        {it.customProtein && (
+                          <p>
+                            <span className="font-bold text-amber-800">Protein choice:</span> {it.customProtein}
+                          </p>
+                        )}
+                        {it.customDrink && (
+                          <p>
+                            <span className="font-bold text-amber-800">Drink:</span> {it.customDrink}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <Currency kobo={it.priceKobo * it.quantity} className="font-mono text-ink-deep font-bold" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </GlassPanel>
 

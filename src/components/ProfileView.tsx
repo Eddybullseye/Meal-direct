@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMealDirect } from '../store';
-import { CAMPUSES, PRESET_LOCATIONS } from '../mockData';
-import { AppShell, GlassPanel } from './CommonUI';
-import { User, Phone, MapPin, Check, ShieldAlert, Library, Home, Bookmark, Activity, Heart, Award } from 'lucide-react';
+import { CAMPUSES, PRESET_LOCATIONS, VENDORS } from '../mockData';
+import { AppShell, GlassPanel, Currency } from './CommonUI';
+import { User, Phone, MapPin, Check, ShieldAlert, Library, Home, Bookmark, Activity, Heart, Award, History, RotateCcw } from 'lucide-react';
 import * as d3 from 'd3';
+import { COUNTRIES, validateCountryPhone, parseStoredPhone } from '../utils/countries';
 
 interface SpendData {
   weekLabel: string;
@@ -52,11 +53,16 @@ const spendHistory: SpendData[] = [
 ];
 
 export const ProfileView: React.FC = () => {
-  const { user, updateProfile, savedLocationIds, toggleSaveLocation } = useMealDirect();
+  const { user, updateProfile, savedLocationIds, toggleSaveLocation, orders, reorderOrder, navigateTo } = useMealDirect();
 
   // If user is null, fallback values
   const [fullName, setFullName] = useState(user?.fullName || 'Gbenga Venite');
-  const [phone, setPhone] = useState(user?.phone || '08012345678');
+  
+  // Parse existing phone number or fallback to default Nigeria format
+  const parsed = parseStoredPhone(user?.phone || '08012345678');
+  const [selectedCountry, setSelectedCountry] = useState(parsed.country);
+  const [localPhone, setLocalPhone] = useState(parsed.localNumber);
+  
   const [selectedCampus, setSelectedCampus] = useState(user?.campusId || CAMPUSES[0].id);
   const [selectedLocation, setSelectedLocation] = useState(user?.defaultLocationId || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -73,17 +79,6 @@ export const ProfileView: React.FC = () => {
   const zoneBHostels = filteredLocs.filter(loc => loc.zone === 'Zone B' && loc.type === 'Hostel');
   const zoneBDepts = filteredLocs.filter(loc => loc.zone === 'Zone B' && loc.type === 'Department');
 
-  const validatePhone = (num: string): boolean => {
-    const clean = num.replace(/\s+/g, '');
-    if (clean.startsWith('+234')) {
-      return clean.length === 14 && /^\+234\d{10}$/.test(clean);
-    }
-    if (clean.startsWith('0')) {
-      return clean.length === 11 && /^0\d{10}$/.test(clean);
-    }
-    return false;
-  };
-
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
@@ -93,8 +88,8 @@ export const ProfileView: React.FC = () => {
       return;
     }
 
-    if (!validatePhone(phone)) {
-      setMsg({ type: 'error', txt: 'Please provide a valid Nigerian phone number (11 digits starting with 0).' });
+    if (!validateCountryPhone(selectedCountry, localPhone)) {
+      setMsg({ type: 'error', txt: `Please provide a valid phone number for ${selectedCountry.name}. e.g. ${selectedCountry.example}` });
       return;
     }
 
@@ -105,8 +100,12 @@ export const ProfileView: React.FC = () => {
 
     setIsSaving(true);
 
+    const finalPhoneNumber = selectedCountry.code === 'OTHER'
+      ? localPhone.trim()
+      : `${selectedCountry.dialCode}${localPhone.trim().replace(/^0/, '')}`;
+
     setTimeout(() => {
-      updateProfile(fullName, phone, selectedCampus, selectedLocation);
+      updateProfile(fullName, finalPhoneNumber, selectedCampus, selectedLocation);
       setIsSaving(false);
       setMsg({ type: 'success', txt: 'Your contact profiles and default dispatch terminal were saved.' });
     }, 1000);
@@ -307,6 +306,98 @@ export const ProfileView: React.FC = () => {
         </div>
       </GlassPanel>
 
+      {/* Dynamic Order History List */}
+      <GlassPanel className="p-6 mb-6 animate-fade-in" id="profile_order_history_block">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#10231C]/6">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-emerald-deep" />
+            <h3 className="font-display font-bold text-sm text-emerald-strong">Your Campus Order History</h3>
+          </div>
+          <span className="text-[10px] font-bold text-muted-grey uppercase">Past Purchases</span>
+        </div>
+
+        {orders.length === 0 ? (
+          <div className="text-center py-8">
+            <History className="w-10 h-10 text-neutral-300 stroke-[1.2] mx-auto mb-2" />
+            <p className="text-xs text-muted-grey">You don't have any past orders yet. Make a purchase to build your history!</p>
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
+            {[...orders]
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map(order => {
+                const vendor = VENDORS.find(v => v.id === order.vendorId);
+                const isCompleted = ['DELIVERED', 'CONFIRMED'].includes(order.status);
+                const isCancelled = ['CANCELLED', 'REFUNDED'].includes(order.status);
+                
+                const itemsSummary = order.items
+                  .map(it => `${it.quantity}x ${it.name}`)
+                  .join(', ');
+
+                return (
+                  <div
+                    key={order.id}
+                    className="p-4 rounded-2xl border border-[#10231C]/6 bg-white hover:border-[#10231C]/15 transition duration-200"
+                    id={`order_history_card_${order.id}`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-muted-grey">Order {order.orderNumber}</span>
+                        <h4 className="font-display font-extrabold text-xs text-ink-deep mt-0.5">
+                          {vendor?.name || 'Kitchen Partner'}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-md ${
+                          isCompleted 
+                            ? 'bg-emerald-deep/10 text-emerald-strong' 
+                            : isCancelled 
+                              ? 'bg-red-50 text-danger border border-red-100' 
+                              : 'bg-mango-warm/15 text-emerald-strong font-black animate-pulse'
+                        }`}>
+                          {order.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-muted-grey line-clamp-1 mb-3.5">
+                      <strong>Items:</strong> {itemsSummary}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 border-t border-neutral-50">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-mono text-muted-grey">Total Cost</span>
+                        <Currency kobo={order.totalKobo} className="text-xs font-black text-ink-deep" />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => navigateTo(`/orders/${order.id}`)}
+                          className="px-3 py-1.5 border border-emerald-deep/12 hover:border-emerald-deep/30 bg-neutral-50/50 hover:bg-neutral-50/100 rounded-xl text-[10px] font-bold text-[#47544F] cursor-pointer transition"
+                          id={`history_track_${order.id}`}
+                        >
+                          Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => reorderOrder(order.id)}
+                          className="px-3 py-1.5 bg-emerald-deep hover:bg-emerald-strong text-white rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.01] active:scale-95 transition"
+                          id={`history_reorder_${order.id}`}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>One-Click Reorder</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </GlassPanel>
+
       <form onSubmit={handleSaveProfile} className="space-y-6">
         {/* Contact details */}
         <GlassPanel className="p-6">
@@ -329,20 +420,54 @@ export const ProfileView: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">Contact phone number (Nigerian)</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-grey">
-                  <Phone className="w-4 h-4 text-emerald-deep" />
+              <label className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">Emergency Contact Mobile ({selectedCountry.name})</label>
+              <div className="flex gap-2.5">
+                <div className="w-1/3 shrink-0 relative">
+                  <select
+                    value={selectedCountry.code}
+                    onChange={(e) => {
+                      const found = COUNTRIES.find(c => c.code === e.target.value);
+                      if (found) {
+                        setSelectedCountry(found);
+                        setLocalPhone('');
+                      }
+                    }}
+                    className="w-full px-3 py-3 bg-neutral-50/50 hover:bg-neutral-50 border border-emerald-deep/15 rounded-xl font-bold text-xs focus:ring-2 focus:ring-emerald-deep focus:outline-none appearance-none cursor-pointer h-full text-ink-deep"
+                    id="profile_country_select"
+                  >
+                    {COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.dialCode}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-grey text-[9px]">
+                    ▼
+                  </div>
                 </div>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-emerald-deep/15 rounded-xl text-xs focus:ring-2 focus:ring-emerald-deep focus:outline-none font-semibold font-mono"
-                  required
-                  id="profile_phone_input"
-                />
+
+                <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Phone className="w-4 h-4 text-emerald-deep/60" />
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder={selectedCountry.code === 'OTHER' ? '+234 803 123 4567' : selectedCountry.placeholder}
+                    value={localPhone}
+                    onChange={(e) => {
+                      // Normalize and strip non-digit characters unless it's OTHER (which needs '+' for dialcode)
+                      const allowedChars = selectedCountry.code === 'OTHER' ? /[^\d+]/g : /\D/g;
+                      setLocalPhone(e.target.value.replace(allowedChars, ''));
+                    }}
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-emerald-deep/15 rounded-xl text-xs focus:ring-2 focus:ring-emerald-deep focus:outline-none font-bold font-mono text-ink-deep"
+                    required
+                    id="profile_phone_input"
+                  />
+                </div>
               </div>
+              <span className="text-[9px] text-muted-grey mt-2 block font-medium">
+                Example format: {selectedCountry.example}
+              </span>
             </div>
           </div>
         </GlassPanel>

@@ -42,7 +42,13 @@ export interface Vendor {
 export interface CartItem {
   menuItemId: string;
   quantity: number;
-  spoonsCount: number; // up to 3 units as per business rules
+  spoonsCount: number; // up to 3 units as per business rules (plastic spoons)
+  customFoodType?: string; // e.g. "White Rice", "Jollof Rice", "Fried Rice", etc.
+  customFoodSpoons?: number; // the quantity of the food (number of spoons)
+  customProtein?: string; // "Beef", "Fish", "Egg"
+  customDrink?: string; // "Malt", "Pepsi", etc.
+  customFoodSelections?: { type: string; spoons: number }[];
+  customProteinSelections?: { type: string; qty: number; price?: number }[];
 }
 
 export interface Cart {
@@ -99,6 +105,12 @@ export interface Order {
     priceKobo: number;
     quantity: number;
     spoonsCount: number;
+    customFoodType?: string;
+    customFoodSpoons?: number;
+    customProtein?: string;
+    customDrink?: string;
+    customFoodSelections?: { type: string; spoons: number }[];
+    customProteinSelections?: { type: string; qty: number; price?: number }[];
   }[];
   subtotalKobo: number;
   deliveryFeeKobo: number;
@@ -163,3 +175,12 @@ export type RoutePath =
   | '/notifications'
   | '/profile'
   | '/offline'; // We use simple state-routing which handles dynamic IDs easily in active props.
+
+export interface MenuItemReview {
+  id: string;
+  menuItemId: string;
+  rating: number;
+  comment: string;
+  userName: string;
+  createdAt: string;
+}

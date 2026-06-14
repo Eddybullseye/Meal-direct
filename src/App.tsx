@@ -5,8 +5,6 @@
 
 import React from 'react';
 import { MealDirectProvider, useMealDirect } from './store';
-import { LandingView } from './components/LandingView';
-import { SignInView } from './components/SignInView';
 import { CallbackView } from './components/CallbackView';
 import { OnboardingView } from './components/OnboardingView';
 import { HomeView } from './components/HomeView';
@@ -25,25 +23,15 @@ const RouteDispatcher: React.FC = () => {
   const { router, user } = useMealDirect();
   const { path, params } = router;
 
-  // Global Auth Guard: Redirect anonymous users to sign-in or landing
-  const isPublicPath = ['/', '/auth/sign-in', '/auth/callback'].includes(path);
-  if (!user && !isPublicPath) {
-    return <LandingView />;
-  }
-
-  // Onboard check guard: redirect onboard pending students
-  if (user && !user.isOnboarded && path !== '/onboarding' && path !== '/auth/callback') {
+  // Onboard check guard: redirect onboard pending students to onboarding
+  if (user && !user.isOnboarded && path !== '/onboarding') {
     return <OnboardingView />;
   }
 
   // Hash SPA routing map
   switch (path) {
     case '/':
-      return user ? <HomeView /> : <LandingView />;
-    case '/auth/sign-in':
-      return <SignInView />;
-    case '/auth/callback':
-      return <CallbackView />;
+      return <HomeView />;
     case '/onboarding':
       return <OnboardingView />;
     case '/home':

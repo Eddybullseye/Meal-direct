@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMealDirect } from '../store';
-import { CAMPUSES, PRESET_LOCATIONS, DELIVERY_SLOTS, VENDORS, isSlotAvailable } from '../mockData';
+import { CAMPUSES, PRESET_LOCATIONS, DELIVERY_SLOTS, VENDORS, isSlotAvailable, MENU_ITEMS } from '../mockData';
 import { AppShell, GlassPanel, Currency } from './CommonUI';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { PullToRefresh } from './PullToRefresh';
@@ -20,7 +20,9 @@ import {
   Timer,
   Bike,
   Sliders,
-  Bookmark
+  Bookmark,
+  Heart,
+  Plus
 } from 'lucide-react';
 
 export const HomeView: React.FC = () => {
@@ -32,8 +34,16 @@ export const HomeView: React.FC = () => {
     currentSlotId,
     currentLocationId,
     setCurrentDateTimeLocation,
-    savedLocationIds
+    savedLocationIds,
+    favoriteItemIds,
+    toggleFavoriteItem,
+    addToCart,
+    cart
   } = useMealDirect();
+
+  // Tab state: 'vendors' or 'favorites'
+  const [activeCatalogTab, setActiveCatalogTab] = useState<'vendors' | 'favorites'>('vendors');
+  const [cartConflictError, setCartConflictError] = useState<string | null>(null);
 
   // Selected date state
   const [tempDate, setTempDate] = useState(currentDate);
@@ -420,79 +430,210 @@ export const HomeView: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. Active Catalog Launch Vendors Grid */}
+      {/* 4. Active Catalog Launch Vendors Grid with Saved Favorites Tab */}
       <section id="vendors_grid_section">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="font-display font-medium text-sm text-emerald-strong flex items-center gap-1.5" id="academic_vendors_title">
-              <Store className="w-4.5 h-4.5 text-emerald-deep" />
-              Certified Academic Launch Vendors
-            </h3>
-            <p className="text-[10px] text-muted-grey mt-0.5">3 vetted partners cooking with premium hygiene standards for Venite.</p>
-          </div>
+        {/* Tab Selection */}
+        <div className="flex border-b border-neutral-100 mb-6 gap-6">
           <button
-            onClick={() => navigateTo('/vendors')}
-            className="text-xs font-black text-emerald-deep hover:underline flex items-center gap-1 cursor-pointer"
+            onClick={() => setActiveCatalogTab('vendors')}
+            className={`pb-3 text-xs font-extrabold uppercase tracking-widest transition flex items-center gap-2 border-b-2 cursor-pointer ${
+              activeCatalogTab === 'vendors' 
+                ? 'border-emerald-deep text-emerald-strong' 
+                : 'border-transparent text-muted-grey hover:text-emerald-deep'
+            }`}
           >
-            <span>See Grid View</span>
-            <ChevronRight className="w-4 h-4" />
+            <Store className="w-4 h-4" />
+            <span>Kitchen Partners</span>
+          </button>
+          <button
+            onClick={() => setActiveCatalogTab('favorites')}
+            className={`pb-3 text-xs font-extrabold uppercase tracking-widest transition flex items-center gap-2 border-b-2 cursor-pointer ${
+              activeCatalogTab === 'favorites' 
+                ? 'border-rose-500 text-rose-500' 
+                : 'border-transparent text-muted-grey hover:text-rose-500'
+            }`}
+            id="favorite_dishes_tab_btn"
+          >
+            <Heart className="w-4 h-4 fill-rose-500 text-rose-500 animate-pulse" />
+            <span>Saved Favorites ({favoriteItemIds?.length || 0})</span>
           </button>
         </div>
 
-        {/* Dynamic List */}
+        {/* Global Cart Conflict Warning Banner */}
+        {cartConflictError && (
+          <div className="mb-5 p-3.5 bg-red-50 border border-red-100 text-danger rounded-xl text-xs font-bold flex items-start gap-2 animate-pulse">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+            <span>{cartConflictError}</span>
+          </div>
+        )}
+
+        {/* Dynamic Inner Catalog Display */}
         {isLoading ? (
           <LoadingSkeleton.Card count={3} />
+        ) : activeCatalogTab === 'vendors' ? (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-display font-medium text-xs tracking-widest text-emerald-strong bg-emerald-deep/5 px-2.5 py-1 rounded inline-block uppercase block">
+                  Certified Academic Launch Vendors
+                </h3>
+                <p className="text-[10px] text-muted-grey mt-1">vetted campus partners cooking with premium hygiene standards for Venite.</p>
+              </div>
+              <button
+                onClick={() => navigateTo('/vendors')}
+                className="text-[10px] font-black tracking-widest text-[#16845B] uppercase hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>See Grid View</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {VENDORS.map(v => {
+                return (
+                  <div
+                    key={v.id}
+                    onClick={() => navigateTo(`/vendors/${v.id}`)}
+                    className="bg-white rounded-[24px] border border-ink-deep/5 overflow-hidden shadow-md hover:shadow-lg hover:scale-[1.01] transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="h-44 w-full relative overflow-hidden">
+                        <img
+                          src={v.imageUrl}
+                          alt={v.name}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition duration-300 hover:scale-105"
+                        />
+                        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-[#F3B33D] flex items-center gap-1 shadow-sm border border-ink-deep/5">
+                          ★ <span className="numeric-tabular text-ink-deep font-bold">{v.rating.toFixed(1)}</span>
+                          <span className="text-muted-grey">({v.reviewCount})</span>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="px-2 py-0.5 bg-[#16845B]/10 text-[#16845B] text-[9px] font-bold rounded-md">CERTIFIED</span>
+                        </div>
+                        <h4 className="font-display font-bold text-base text-ink-deep leading-normal">{v.name}</h4>
+                        <p className="text-[11px] text-muted-grey line-clamp-2 mt-1 leading-relaxed">
+                          {v.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-5 pt-0">
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {v.featuredTags.map((tag, tIdx) => (
+                          <span key={tIdx} className="text-[9px] font-bold tracking-wider text-[#617069] bg-ink-deep/5 border border-ink-deep/8 rounded-md px-1.5 py-0.5 uppercase">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <button className="w-full py-2.5 bg-[#10231C] text-white hover:bg-[#0B6B4F] transition font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer shadow-sm">
+                        <span>VIEW MENU</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {VENDORS.map(v => {
-              return (
-                <div
-                  key={v.id}
-                  onClick={() => navigateTo(`/vendors/${v.id}`)}
-                  className="bg-white rounded-[24px] border border-ink-deep/5 overflow-hidden shadow-md hover:shadow-lg hover:scale-[1.01] transition-all duration-300 cursor-pointer flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="h-44 w-full relative overflow-hidden">
-                      <img
-                        src={v.imageUrl}
-                        alt={v.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover transition duration-300 hover:scale-105"
-                      />
-                      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-[#F3B33D] flex items-center gap-1 shadow-sm border border-ink-deep/5">
-                        ★ <span className="numeric-tabular text-ink-deep font-bold">{v.rating.toFixed(1)}</span>
-                        <span className="text-muted-grey">({v.reviewCount})</span>
+          /* Favorites Tab renderer */
+          <div>
+            {MENU_ITEMS.filter(it => favoriteItemIds?.includes(it.id)).length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-rose-200/60 p-6 flex flex-col items-center justify-center">
+                <Heart className="w-12 h-12 text-rose-300 stroke-[1.5] mb-3 animate-pulse" />
+                <h4 className="font-display font-bold text-sm text-ink-deep mb-1">Your Favorites Tab is Empty</h4>
+                <p className="text-xs text-muted-grey max-w-sm">Tap the heart toggle next to any dish inside our interactive vendor menus to save meals for rapid access.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {MENU_ITEMS.filter(it => favoriteItemIds?.includes(it.id)).map(item => {
+                  const itemVendorId = item.id.startsWith('item_grill') 
+                    ? 'ven_grill' 
+                    : item.id.startsWith('item_bistro') 
+                      ? 'ven_bistro' 
+                      : item.id.startsWith('item_bake')
+                        ? 'ven_bake'
+                        : 'ven_akara';
+                  const vendorObj = VENDORS.find(v => v.id === itemVendorId);
+                  const activeInCart = cart && cart.vendorId === itemVendorId 
+                    ? cart.items.find(it => it.menuItemId === item.id) 
+                    : null;
+
+                  const handleQuickAdd = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setCartConflictError(null);
+                    
+                    if (cart && cart.vendorId !== itemVendorId) {
+                      const currentVendorName = VENDORS.find(v => v.id === cart.vendorId)?.name || 'another kitchen';
+                      setCartConflictError(`Your cart contains options from "${currentVendorName}". Please checkout or clear your cart first.`);
+                      setTimeout(() => setCartConflictError(null), 4500);
+                      return;
+                    }
+                    
+                    addToCart(itemVendorId, { menuItemId: item.id, quantity: 1, spoonsCount: 1 });
+                  };
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => navigateTo(`/vendors/${itemVendorId}`)}
+                      className="bg-white rounded-2xl border border-neutral-100 p-4 flex gap-4 shadow-sm hover:shadow-md transition cursor-pointer relative"
+                      id={`fav_dish_card_${item.id}`}
+                    >
+                      <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-neutral-50 relative">
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between gap-1.5">
+                            <h4 className="font-display font-extrabold text-xs text-ink-deep leading-normal">{item.name}</h4>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavoriteItem(item.id);
+                              }}
+                              className="text-rose-500 hover:text-rose-600 p-1 rounded transition shrink-0 cursor-pointer"
+                              title="Remove from favorites"
+                            >
+                              <Heart className="w-3.5 h-3.5 fill-current" />
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-[#16845B] font-bold mt-0.5">
+                            at {vendorObj?.name || 'Kitchen partner'}
+                          </p>
+                          <p className="text-[10px] text-muted-grey mt-1 line-clamp-1">
+                            {item.description}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-2.5">
+                          <Currency kobo={item.priceKobo} className="text-xs font-extrabold text-ink-deep" />
+                          
+                          {activeInCart ? (
+                            <span className="text-[10px] font-black text-emerald-strong bg-emerald-deep/8 px-2 py-0.5 rounded-md">
+                              {activeInCart.quantity} in Cart
+                            </span>
+                          ) : (
+                            <button
+                              onClick={handleQuickAdd}
+                              className="bg-emerald-deep hover:bg-emerald-strong text-white rounded-lg p-1 px-3 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shadow-xs"
+                              id={`fav_quick_add_${item.id}`}
+                            >
+                              <Plus className="w-3 h-3" /> Quick Add
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="p-5">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="px-2 py-0.5 bg-[#16845B]/10 text-[#16845B] text-[9px] font-bold rounded-md">CERTIFIED</span>
-                      </div>
-                      <h4 className="font-display font-bold text-base text-ink-deep leading-normal">{v.name}</h4>
-                      <p className="text-[11px] text-muted-grey line-clamp-2 mt-1 leading-relaxed">
-                        {v.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-5 pt-0">
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {v.featuredTags.map((tag, tIdx) => (
-                        <span key={tIdx} className="text-[9px] font-bold tracking-wider text-[#617069] bg-ink-deep/5 border border-ink-deep/8 rounded-md px-1.5 py-0.5 uppercase">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <button className="w-full py-2.5 bg-[#10231C] text-white hover:bg-[#0B6B4F] transition font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer shadow-sm">
-                      <span>VIEW MENU</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </section>

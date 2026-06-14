@@ -128,6 +128,7 @@ export const CartView: React.FC = () => {
                 if (!dbItem) return null;
 
                 const itemTotalKobo = dbItem.priceKobo * cartItem.quantity;
+                const hasCustomSelections = cartItem.customFoodType || cartItem.customProtein || cartItem.customDrink;
                 
                 return (
                   <div key={cartItem.menuItemId} className="py-4.5 first:pt-0 last:pb-0 flex gap-4">
@@ -161,6 +162,34 @@ export const CartView: React.FC = () => {
                           </button>
                         </div>
                       </div>
+
+                      {/* Venite Main cafeteria Options Container */}
+                      {hasCustomSelections && (
+                        <div className="mt-2 bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/50 text-[10px] text-amber-900 space-y-1 max-w-xs">
+                          <div className="font-extrabold flex items-center gap-1 text-amber-950 uppercase tracking-wider mb-1">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                            <span>Selected Meal Bundle</span>
+                          </div>
+                          {cartItem.customFoodType && (
+                            <div>
+                              <span className="font-semibold text-amber-900">Food Type:</span>{' '}
+                              <span className="font-bold text-amber-950">{cartItem.customFoodType} ({cartItem.customFoodSpoons || 3} Spoons)</span>
+                            </div>
+                          )}
+                          {cartItem.customProtein && (
+                            <div>
+                              <span className="font-semibold text-amber-900">Protein:</span>{' '}
+                              <span className="font-bold text-amber-950">{cartItem.customProtein}</span>
+                            </div>
+                          )}
+                          {cartItem.customDrink && (
+                            <div>
+                              <span className="font-semibold text-amber-900">Drink:</span>{' '}
+                              <span className="font-bold text-amber-950">{cartItem.customDrink}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Quantity operations */}
                       <div className="flex items-center justify-between gap-4 mt-3">

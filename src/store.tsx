@@ -12,6 +12,7 @@ import {
   OrderQuote
 } from './types';
 import { CAMPUSES, PRESET_LOCATIONS, DELIVERY_SLOTS, VENDORS, MENU_ITEMS } from './mockData';
+import { triggerVibration, VIBE_PATTERNS } from './utils/vibe';
 
 interface RouterState {
   path: string;
@@ -37,7 +38,17 @@ interface MealDirectContextType {
   cart: Cart | null;
   addToCart: (vendorId: string, item: CartItem) => void;
   updateCartItemQuantity: (menuItemId: string, quantity: number) => void;
-  updateCartItemSpoons: (menuItemId: string, spoonsCount: number) => void;
+  updateCartItemSpoons: (
+    menuItemId: string,
+    spoonsCount: number,
+    customFoodType?: string,
+    customFoodSpoons?: number,
+    customProtein?: string,
+    customDrink?: string,
+    quantity?: number,
+    customFoodSelections?: { type: string; spoons: number }[],
+    customProteinSelections?: { type: string; qty: number; price?: number }[]
+  ) => void;
   removeFromCart: (menuItemId: string) => void;
   clearCart: () => void;
   setCartDateTimeLocation: (date: string, slotId: string, locationId: string) => void;
@@ -83,6 +94,10 @@ interface MealDirectContextType {
   // Saved Delivery Locations
   savedLocationIds: string[];
   toggleSaveLocation: (locationId: string) => void;
+
+  // Saved Favorite Dishes
+  favoriteItemIds: string[];
+  toggleFavoriteItem: (itemId: string) => void;
 }
 
 const MealDirectContext = createContext<MealDirectContextType | undefined>(undefined);
@@ -111,6 +126,113 @@ function parseLocation(): RouterState {
   return { path, params };
 }
 
+export function computeCustomMealPriceKobo(
+  menuItemId: string,
+  foods?: { type: string; spoons: number }[],
+  proteins?: { type: string; qty: number; price?: number }[],
+  drink?: string,
+  fallbackFoodType?: string,
+  fallbackFoodSpoons?: number,
+  fallbackProtein?: string
+): number {
+  let customSubtotal = 0;
+
+  // Compile effective lists
+  const effectiveFoods = (foods && foods.length > 0)
+    ? foods
+    : (fallbackFoodType ? [{ type: fallbackFoodType, spoons: fallbackFoodSpoons || 3 }] : []);
+
+  const effectiveProteins = (proteins && proteins.length > 0)
+    ? proteins
+    : (fallbackProtein ? [{ type: fallbackProtein, qty: 1 }] : []);
+
+  if (menuItemId === 'item_bistro_custom') {
+    // Matade pricing
+    effectiveFoods.forEach(sel => {
+      const normType = sel.type.toLowerCase();
+      if (normType.includes('peppersoup')) {
+        customSubtotal += 250000 * sel.spoons; // ₦2,500 per portion
+      } else {
+        customSubtotal += 50000 * sel.spoons; // ₦500 per spoon
+      }
+    });
+
+    effectiveProteins.forEach(sel => {
+      customSubtotal += 50000 * (sel.qty || 1); // ₦500 for all proteins at Matade
+    });
+
+    // Note: Drinks are removed for Matade
+  } else if (menuItemId === 'item_grill5') {
+    // Venite Main Cafeteria pricing
+    effectiveFoods.forEach(sel => {
+      const normType = sel.type.toLowerCase();
+      if (normType.includes('jollof rice') || normType.includes('white rice')) {
+        customSubtotal += 40000 * sel.spoons; // ₦400 per spoon
+      } else if (normType.includes('fried rice') || normType.includes('jollof spaghetti') || normType.includes('white spaghetti') || normType.includes('spaghetti')) {
+        customSubtotal += 50000 * sel.spoons; // ₦500 per spoon
+      } else if (normType.includes('beans')) {
+        customSubtotal += 30000 * sel.spoons; // ₦300 per spoon
+      } else if (normType.includes('fufu') || normType.includes('semo')) {
+        customSubtotal += 25000 * sel.spoons; // ₦250 per piece (one/spoon)
+      } else {
+        customSubtotal += 50000 * sel.spoons; // Fallback
+      }
+    });
+
+    effectiveProteins.forEach(sel => {
+      const normType = sel.type.toLowerCase();
+      const qty = sel.qty || 1;
+      if (normType.includes('beef') || normType.includes('ponmo')) {
+        customSubtotal += 50000 * qty; // ₦500 each
+      } else if (normType.includes('egg')) {
+        customSubtotal += 30000 * qty; // ₦300 each
+      } else if (normType.includes('fish')) {
+        const fishPriceKobo = sel.price ? sel.price : 50000; // default to 500 kobo if not specified
+        customSubtotal += fishPriceKobo * qty;
+      } else {
+        customSubtotal += 50000 * qty; // Fallback
+      }
+    });
+
+    if (drink) {
+      const normDrink = drink.toLowerCase();
+      if (
+        normDrink.includes('coke') ||
+        normDrink.includes('fanta') ||
+        normDrink.includes('schweppes') ||
+        normDrink.includes('7up') ||
+        normDrink.includes('teem') ||
+        normDrink.includes('sprite') ||
+        normDrink.includes('pepsi') ||
+        normDrink.includes('sosa')
+      ) {
+        customSubtotal += 50000; // ₦500
+      } else if (
+        normDrink.includes('predator') ||
+        normDrink.includes('fearless') ||
+        normDrink.includes('malt')
+      ) {
+        customSubtotal += 60000; // ₦600
+      } else if (normDrink.includes('nutrichoco')) {
+        customSubtotal += 100000; // ₦1,000
+      } else if (
+        normDrink.includes('nutrimilk') ||
+        normDrink.includes('fayrouz') ||
+        normDrink.includes('viju milk')
+      ) {
+        customSubtotal += 80000; // ₦800
+      }
+    }
+  } else {
+    return 0; // Not a custom meal item
+  }
+
+  // Always add takeaway packing surcharge fee (₦200 = 20000 kobo)
+  customSubtotal += 20000;
+
+  return customSubtotal;
+}
+
 export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Offline State
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -127,7 +249,16 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Persisted Database State
   const [user, setUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('md_user');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) return JSON.parse(saved);
+
+    const defaultUser: UserProfile = {
+      id: 'usr_venite_auto',
+      email: 'gbenga.venite@gmail.com',
+      fullName: 'Gbenga Venite',
+      isOnboarded: false
+    };
+    localStorage.setItem('md_user', JSON.stringify(defaultUser));
+    return defaultUser;
   });
 
   const [onboardingData, setOnboardingData] = useState<{ phone: string; campusId: string; locationId: string } | null>(() => {
@@ -177,6 +308,11 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return saved ? JSON.parse(saved) : ['loc_hall1', 'loc_fac_sci'];
   });
 
+  const [favoriteItemIds, setFavoriteItemIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('md_favorite_item_ids');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [activeInAppAlert, setActiveInAppAlert] = useState<{ id: string; orderId: string; orderNumber: string; title: string; message: string; timestamp: string } | null>(null);
   const dismissInAppAlert = () => setActiveInAppAlert(null);
 
@@ -189,9 +325,11 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem('md_escalations', JSON.stringify(escalations));
     localStorage.setItem('md_reviews', JSON.stringify(reviews));
     localStorage.setItem('md_saved_location_ids', JSON.stringify(savedLocationIds));
-  }, [user, cart, orders, notifications, escalations, reviews, savedLocationIds]);
+    localStorage.setItem('md_favorite_item_ids', JSON.stringify(favoriteItemIds));
+  }, [user, cart, orders, notifications, escalations, reviews, savedLocationIds, favoriteItemIds]);
 
   const toggleSaveLocation = (locationId: string) => {
+    triggerVibration(VIBE_PATTERNS.MEDIUM);
     setSavedLocationIds(prev => {
       const isSaved = prev.includes(locationId);
       let next: string[];
@@ -201,6 +339,22 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       } else {
         next = [...prev, locationId];
         addNotification('Location Pinned! 📍', 'The building has been pinned for fast checkout shortcuts!', 'general');
+      }
+      return next;
+    });
+  };
+
+  const toggleFavoriteItem = (itemId: string) => {
+    triggerVibration(VIBE_PATTERNS.MEDIUM);
+    setFavoriteItemIds(prev => {
+      const isFav = prev.includes(itemId);
+      let next: string[];
+      if (isFav) {
+        next = prev.filter(id => id !== itemId);
+        addNotification('Removed from Favorites ❤️', 'The dish was removed from your favorites list.', 'general');
+      } else {
+        next = [...prev, itemId];
+        addNotification('Added to Favorites ❤️', 'The dish was successfully saved to your favorites tab.', 'general');
       }
       return next;
     });
@@ -249,7 +403,7 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Exchange callback, create user shell
     const loggedUser: UserProfile = {
       id: 'usr_venite_' + Math.random().toString(36).substr(2, 9),
-      email: 'student.venite@uniedu.ng',
+      email: 'gbenga.venite@gmail.com',
       fullName: 'Gbenga Venite',
       isOnboarded: false
     };
@@ -296,23 +450,32 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const signOut = () => {
-    setUser(null);
-    setCart(null);
-    setOrders([]);
-    setNotifications([]);
-    setOnboardingData(null);
     localStorage.removeItem('md_orders');
     localStorage.removeItem('md_cart');
-    localStorage.removeItem('md_user');
     localStorage.removeItem('md_notifications');
     localStorage.removeItem('md_escalations');
     localStorage.removeItem('md_reviews');
     localStorage.removeItem('md_onboarding_temp');
-    navigateTo('/');
+
+    const freshUser: UserProfile = {
+      id: 'usr_venite_' + Math.random().toString(36).substr(2, 9),
+      email: 'gbenga.venite@gmail.com',
+      fullName: 'Gbenga Venite',
+      isOnboarded: false
+    };
+    localStorage.setItem('md_user', JSON.stringify(freshUser));
+    
+    setUser(freshUser);
+    setCart(null);
+    setOrders([]);
+    setNotifications([]);
+    setOnboardingData(null);
+    navigateTo('/onboarding');
   };
 
   // Cart operations
   const addToCart = (vendorId: string, newItem: CartItem) => {
+    triggerVibration(VIBE_PATTERNS.TICK);
     // Validate Single-Vendor cart rule
     if (cart && cart.vendorId !== vendorId) {
       // Prompt modal confirmation is required, but we enforce this check on the menu Page as well
@@ -334,6 +497,10 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       currentItems[existingIndex].quantity += newItem.quantity;
       // Enforce the 3 spoon restriction
       currentItems[existingIndex].spoonsCount = Math.min(3, newItem.spoonsCount);
+      if (newItem.customFoodType !== undefined) currentItems[existingIndex].customFoodType = newItem.customFoodType;
+      if (newItem.customFoodSpoons !== undefined) currentItems[existingIndex].customFoodSpoons = newItem.customFoodSpoons;
+      if (newItem.customProtein !== undefined) currentItems[existingIndex].customProtein = newItem.customProtein;
+      if (newItem.customDrink !== undefined) currentItems[existingIndex].customDrink = newItem.customDrink;
     } else {
       currentItems.push({
         ...newItem,
@@ -358,6 +525,7 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateCartItemQuantity = (menuItemId: string, quantity: number) => {
     if (!cart) return;
+    triggerVibration(VIBE_PATTERNS.TICK);
     let currentItems = [...cart.items];
     if (quantity <= 0) {
       currentItems = currentItems.filter(it => it.menuItemId !== menuItemId);
@@ -375,18 +543,37 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const updateCartItemSpoons = (menuItemId: string, spoonsCount: number) => {
+  const updateCartItemSpoons = (
+    menuItemId: string,
+    spoonsCount: number,
+    customFoodType?: string,
+    customFoodSpoons?: number,
+    customProtein?: string,
+    customDrink?: string,
+    quantity?: number,
+    customFoodSelections?: { type: string; spoons: number }[],
+    customProteinSelections?: { type: string; qty: number; price?: number }[]
+  ) => {
     if (!cart) return;
+    triggerVibration(VIBE_PATTERNS.TICK);
     const currentItems = [...cart.items];
     const idx = currentItems.findIndex(it => it.menuItemId === menuItemId);
     if (idx >= 0) {
       currentItems[idx].spoonsCount = Math.min(3, Math.max(0, spoonsCount)); // business rule cap of 3
+      if (customFoodType !== undefined) currentItems[idx].customFoodType = customFoodType;
+      if (customFoodSpoons !== undefined) currentItems[idx].customFoodSpoons = customFoodSpoons;
+      if (customProtein !== undefined) currentItems[idx].customProtein = customProtein;
+      if (customDrink !== undefined) currentItems[idx].customDrink = customDrink;
+      if (quantity !== undefined) currentItems[idx].quantity = quantity;
+      if (customFoodSelections !== undefined) currentItems[idx].customFoodSelections = customFoodSelections;
+      if (customProteinSelections !== undefined) currentItems[idx].customProteinSelections = customProteinSelections;
       setCart({ ...cart, items: currentItems });
     }
   };
 
   const removeFromCart = (menuItemId: string) => {
     if (!cart) return;
+    triggerVibration(VIBE_PATTERNS.TICK);
     const currentItems = cart.items.filter(it => it.menuItemId !== menuItemId);
     if (currentItems.length === 0) {
       setCart(null);
@@ -396,6 +583,7 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const clearCart = () => {
+    triggerVibration(VIBE_PATTERNS.TICK);
     setCart(null);
   };
 
@@ -422,7 +610,20 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     cart.items.forEach(cItem => {
       const dbItem = MENU_ITEMS.find(it => it.id === cItem.menuItemId);
       if (dbItem) {
-        subtotalKobo += dbItem.priceKobo * cItem.quantity;
+        let itemPriceKobo = dbItem.priceKobo;
+        if (cItem.menuItemId === 'item_grill5' || cItem.menuItemId === 'item_bistro_custom') {
+          itemPriceKobo = computeCustomMealPriceKobo(
+            cItem.menuItemId,
+            cItem.customFoodSelections,
+            cItem.customProteinSelections,
+            cItem.customDrink,
+            cItem.customFoodType,
+            cItem.customFoodSpoons,
+            cItem.customProtein
+          );
+        }
+
+        subtotalKobo += itemPriceKobo * cItem.quantity;
         spoonCount += cItem.spoonsCount;
         itemCount += cItem.quantity;
         if (cItem.spoonsCount > 3) {
@@ -462,7 +663,13 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         name: dbItem.name,
         priceKobo: dbItem.priceKobo,
         quantity: cItem.quantity,
-        spoonsCount: cItem.spoonsCount
+        spoonsCount: cItem.spoonsCount,
+        customFoodType: cItem.customFoodType,
+        customFoodSpoons: cItem.customFoodSpoons,
+        customProtein: cItem.customProtein,
+        customDrink: cItem.customDrink,
+        customFoodSelections: cItem.customFoodSelections,
+        customProteinSelections: cItem.customProteinSelections
       };
     });
 
@@ -497,10 +704,12 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setOrders(prev => [newOrder, ...prev]);
     setCart(null); // Clear active cart on check out
+    triggerVibration(VIBE_PATTERNS.MEDIUM);
     return newOrder;
   };
 
   const payOrder = (orderId: string) => {
+    triggerVibration(VIBE_PATTERNS.SUCCESS);
     setOrders(prev =>
       prev.map(o => {
         if (o.id === orderId) {
@@ -536,6 +745,7 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const confirmDelivery = (orderId: string) => {
+    triggerVibration(VIBE_PATTERNS.SUCCESS);
     setOrders(prev =>
       prev.map(o => {
         if (o.id === orderId) {
@@ -889,7 +1099,10 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         dismissInAppAlert,
 
         savedLocationIds,
-        toggleSaveLocation
+        toggleSaveLocation,
+
+        favoriteItemIds,
+        toggleFavoriteItem
       }}
     >
       {children}

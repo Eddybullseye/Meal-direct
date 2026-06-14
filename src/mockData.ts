@@ -32,7 +32,7 @@ export const DELIVERY_SLOTS: DeliverySlot[] = [
 export const VENDORS: Vendor[] = [
   {
     id: 'ven_grill',
-    name: 'The Campus Grill',
+    name: 'Venite Main cafeteria',
     description: 'Serving hot charcoal-fired chicken, spicy shawarma wraps, and smokey Jollof rice loaded with classic Venite seasoning.',
     imageUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=400',
     rating: 4.8,
@@ -42,8 +42,8 @@ export const VENDORS: Vendor[] = [
   },
   {
     id: 'ven_bistro',
-    name: 'Savoury Spoon Bistro',
-    description: 'Expertly prepared traditional swallows, Egusi vegetable soup, and perfectly cooked white rice topped with delicious Ayamase sauce.',
+    name: 'Matade',
+    description: 'Create your perfect combination of Jollof rice, white rice, ofada, peppersoup, spaghetti, semo, or eba paired with premium proteins like beef, fish, ponmo, and egg.',
     imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&q=80&w=400',
     rating: 4.6,
     reviewCount: 98,
@@ -52,18 +52,28 @@ export const VENDORS: Vendor[] = [
   },
   {
     id: 'ven_bake',
-    name: 'Venite Fuel & Bake',
-    description: 'Fresh campus pastries, hot meatpies, juicy gourmet double burgers, and ice-cold hand-spun vanilla and strawberry milkshakes.',
+    name: 'Mr Bunmi',
+    description: 'Delectable campus pastries, fresh meat pies, hot dogs, fluffy spring rolls, pizza, double burgers, and custom dessert cakes.',
     imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=400',
     rating: 4.7,
     reviewCount: 119,
     featuredTags: ['Bakery', 'Burgers', 'Quick Snack'],
     preparationTimeMins: 15
+  },
+  {
+    id: 'ven_akara',
+    name: 'Akara spot',
+    description: 'Amazing hot Akara, sweet pull-apart bread, fried sweet potato slices, crispy fried yam, and cold Eko wraps. Fast, authentic native breakfast.',
+    imageUrl: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&q=80&w=400',
+    rating: 4.9,
+    reviewCount: 84,
+    featuredTags: ['Breakfast', 'Akara', 'Student Favorite'],
+    preparationTimeMins: 10
   }
 ];
 
 export const MENU_ITEMS: MenuItem[] = [
-  // The Campus Grill menu
+  // The Venite Main cafeteria menu
   {
     id: 'item_grill1',
     name: 'Charcoal Grilled Quarter Chicken',
@@ -100,63 +110,173 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'Sides & Snacks',
     availableQuantity: 10
   },
-
-  // Savoury Spoon Bistro menu
   {
-    id: 'item_bistro1',
-    name: 'Traditional Amala & Rich Abula combo',
-    description: 'Smooth soft hot Yam flour (Amala) served with Gbegiri (bean soup), Ewedu, and tasty bell pepper stew with tender beef.',
-    priceKobo: 220000, // ₦2,200.00
+    id: 'item_grill5',
+    name: 'Venite Cafeteria Custom Combo Builder (Tailored)',
+    description: 'Build your custom buffet meal combo: choose up to four local main menus, portions, preferred proteins including ponmo, and cold drink.',
+    priceKobo: 0, // Calculated dynamically
     imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300',
-    category: 'Swallows',
-    availableQuantity: 20
+    category: 'Mains',
+    availableQuantity: 100
   },
+
+  // Matade menu
   {
-    id: 'item_bistro2',
-    name: 'Steaming Egusi Soup with Semovita',
-    description: 'Rich ground melon seed Egusi soup cooked with fresh local spinach, tripe, beef chunk, served with smooth Semovita.',
-    priceKobo: 240000, // ₦2,400.00
-    imageUrl: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&q=80&w=300',
-    category: 'Swallows',
-    availableQuantity: 18
-  },
-  {
-    id: 'item_bistro3',
-    name: 'ofada Special Rice Pot',
-    description: 'Locally grown unpolished ofada Rice served in clean banana leaf wrap with fiery Ayamase pepper sauce, egg, and meat.',
-    priceKobo: 260000, // ₦2,600.00
+    id: 'item_bistro_custom',
+    name: 'Matade Custom Plate Builder (Tailored)',
+    description: 'Customize a combination of piping-hot main menus, select preferred proteins like tender beef or seasoned ponmo, portion size, and takeaway package.',
+    priceKobo: 0, // Calculated dynamically
     imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&q=80&w=300',
     category: 'Mains',
-    availableQuantity: 15
+    availableQuantity: 100
   },
 
-  // Venite Fuel & Bake menu
+  // Mr Bunmi menu items
   {
-    id: 'item_bake1',
-    name: 'The Campus Double Cheeseburger',
-    description: 'Two grilled 100% grade-A beef patties, double sliced melted cheddar, sweet onions, and buttery toasted brioche bun.',
-    priceKobo: 280000, // ₦2,800.00
-    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&q=80&w=300',
-    category: 'Mains',
-    availableQuantity: 12
+    id: 'item_bake_sausage',
+    name: 'Sausage roll',
+    description: 'Golden flaky pastry wrapped around a delicious seasoned sausage roll.',
+    priceKobo: 60000, // ₦600.00
+    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
+    availableQuantity: 50
   },
   {
-    id: 'item_bake2',
-    name: 'Flaky Golden Beef Meatpie',
-    description: 'Freshly baked buttery pastry filled with spiced lean ground beef, soft carrots, and diced potato cubes.',
-    priceKobo: 70000, // ₦700.00
+    id: 'item_bake_meatpie',
+    name: 'Meat pie',
+    description: 'Freshly-baked buttery pastry stuffed with seasoned ground beef, potatoes, and diced carrots.',
+    priceKobo: 60000, // ₦600.00
+    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
+    availableQuantity: 45
+  },
+  {
+    id: 'item_bake_chickenpie',
+    name: 'Chicken pie',
+    description: 'Buttery shortcrust pastry filled with delicious shredded chicken breast and savory vegetable gravy.',
+    priceKobo: 60000, // ₦600.00
+    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
+    availableQuantity: 40
+  },
+  {
+    id: 'item_bake_hotdog',
+    name: 'Hot dog',
+    description: 'Juicy grilled beef sausage inside a toasted soft bun, drizzled with mustard and sweet relish ketchup.',
+    priceKobo: 30000, // ₦300.00
+    imageUrl: 'https://images.unsplash.com/photo-1541248163665-21d78ebd55bf?auto=format&fit=crop&q=80&w=300',
+    category: 'Quick Bites',
+    availableQuantity: 25
+  },
+  {
+    id: 'item_bake_puffpuff',
+    name: 'Puff puff',
+    description: 'Sweet, fluffy fried dough balls dusted with sugar - a classic campus favorite.',
+    priceKobo: 15000, // ₦150.00
+    imageUrl: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&q=80&w=300',
+    category: 'Quick Bites',
+    availableQuantity: 100
+  },
+  {
+    id: 'item_bake_fishpie',
+    name: 'Fish pie',
+    description: 'Savory deep-fried puff pastry pocket packed with spiced shredded mackerel.',
+    priceKobo: 60000, // ₦600.00
     imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
     category: 'Pastries',
     availableQuantity: 30
   },
   {
-    id: 'item_bake3',
-    name: 'Hand-Spun Creamy Vanilla Shake',
-    description: 'Cold blended thick milkshake made with premium milk, fresh whipped vanilla bean ice cream, and whipped cream topping.',
-    priceKobo: 120000, // ₦1,200.00
-    imageUrl: 'https://images.unsplash.com/photo-1579954115545-a95591f28bfc?auto=format&fit=crop&q=80&w=300',
-    category: 'Drinks',
+    id: 'item_bake_springroll',
+    name: 'Spring roll',
+    description: 'Crunchy golden light wrappers stuffed with mixed shredded vegetables and minced chicken.',
+    priceKobo: 20000, // ₦200.00
+    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300',
+    category: 'Quick Bites',
+    availableQuantity: 35
+  },
+  {
+    id: 'item_bake_cake1',
+    name: 'Slice of Vanilla Sponge Cake',
+    description: 'Thick moist slice of hand-whipped vanilla butter sponge cake.',
+    priceKobo: 70000, // ₦700.00
+    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
+    availableQuantity: 20
+  },
+  {
+    id: 'item_bake_cake2',
+    name: 'Slice of Red Velvet Cake',
+    description: 'Premium rich chocolate red velvet cake slice topped with smooth sweet cream cheese frosting.',
+    priceKobo: 80000, // ₦800.00
+    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
     availableQuantity: 15
+  },
+  {
+    id: 'item_bake_eggroll',
+    name: 'Egg roll',
+    description: 'Hard-boiled whole egg wrapped inside golden crisp yeast dough.',
+    priceKobo: 60000, // ₦600.00
+    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
+    availableQuantity: 22
+  },
+  {
+    id: 'item_bake_fishroll',
+    name: 'Fish roll',
+    description: 'Spiced flaky roll filled with savory minced mackerel fish stuffing.',
+    priceKobo: 60000, // ₦600.00
+    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
+    category: 'Pastries',
+    availableQuantity: 20
+  },
+
+  // Akara spot menu items
+  {
+    id: 'item_akara_akara',
+    name: 'Golden Fried Akara',
+    description: 'Crispy fried bean cake made from pure ground brown beans, spicy onions, and chillies.',
+    priceKobo: 10000, // ₦100.00 per unit
+    imageUrl: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&q=80&w=300',
+    category: 'Hot Mains',
+    availableQuantity: 150
+  },
+  {
+    id: 'item_akara_bread',
+    name: 'Sweet Agege Bread',
+    description: 'Freshly baked soft Nigerian pull-apart sweet bread - perfect companion for Akara.',
+    priceKobo: 50000, // ₦500.00 per unit
+    imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=300',
+    category: 'Sides & Bread',
+    availableQuantity: 40
+  },
+  {
+    id: 'item_akara_potato',
+    name: 'Fried Sweet Potato',
+    description: 'Soft crisp fried sweet potato slices salted to perfection.',
+    priceKobo: 10000, // ₦100.00 per unit
+    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300',
+    category: 'Sides & Bread',
+    availableQuantity: 80
+  },
+  {
+    id: 'item_akara_yam',
+    name: 'Fried Yam Slice (Dundun)',
+    description: 'Crispy oil-fried white yam fingers seasoned lightly with local sea salt.',
+    priceKobo: 10000, // ₦100.00 per unit
+    imageUrl: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&q=80&w=300',
+    category: 'Sides & Bread',
+    availableQuantity: 90
+  },
+  {
+    id: 'item_akara_eko',
+    name: 'Wrap of Cold Eko (Solid Pap)',
+    description: 'Cold solid corn starch pudding wrapped traditionally in plantain leaves.',
+    priceKobo: 10000, // ₦100.00 per unit
+    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300',
+    category: 'Sides & Bread',
+    availableQuantity: 50
   }
 ];
 
@@ -165,6 +285,7 @@ export const getMenuItemsByVendor = (vendorId: string): MenuItem[] => {
   if (vendorId === 'ven_grill') return MENU_ITEMS.filter(it => it.id.startsWith('item_grill'));
   if (vendorId === 'ven_bistro') return MENU_ITEMS.filter(it => it.id.startsWith('item_bistro'));
   if (vendorId === 'ven_bake') return MENU_ITEMS.filter(it => it.id.startsWith('item_bake'));
+  if (vendorId === 'ven_akara') return MENU_ITEMS.filter(it => it.id.startsWith('item_akara'));
   return [];
 };
 

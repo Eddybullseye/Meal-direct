@@ -95,7 +95,7 @@ export const VendorsView: React.FC = () => {
                           // Also match if any of its dishes matches the debounced string
                           MENU_ITEMS.some(item => {
                             const isThisVendor = item.id.startsWith(
-                              v.id === 'ven_grill' ? 'item_grill' : v.id === 'ven_bistro' ? 'item_bistro' : 'item_bake'
+                              v.id === 'ven_grill' ? 'item_grill' : v.id === 'ven_bistro' ? 'item_bistro' : v.id === 'ven_bake' ? 'item_bake' : 'item_akara'
                             );
                             return isThisVendor && item.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
                           });
@@ -130,7 +130,7 @@ export const VendorsView: React.FC = () => {
             <Search className="absolute inset-y-0 left-0 pl-3.5 w-4.5 h-full text-muted-grey flex items-center pointer-events-none" />
             <input
               type="text"
-              placeholder="Search vendors or dishes (e.g. grill, savory, traditional amala, beef, wrap)..."
+              placeholder="Search vendors or dishes (e.g. cafeteria, savory, traditional amala, beef, wrap)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsFocused(true)}
@@ -199,7 +199,9 @@ export const VendorsView: React.FC = () => {
                           ? 'ven_grill' 
                           : d.id.startsWith('item_bistro') 
                             ? 'ven_bistro' 
-                            : 'ven_bake';
+                            : d.id.startsWith('item_bake')
+                              ? 'ven_bake'
+                              : 'ven_akara';
                         const vendorObj = VENDORS.find(v => v.id === vendorId);
                         
                         return (

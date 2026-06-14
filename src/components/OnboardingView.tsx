@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useMealDirect } from '../store';
 import { CAMPUSES, PRESET_LOCATIONS } from '../mockData';
 import { AppShell, GlassPanel } from './CommonUI';
-import { MapPin, Phone, Check, ShieldAlert, Library, Home, ChevronRight } from 'lucide-react';
+import { MapPin, Phone, Check, ShieldAlert, Library, Home, ChevronRight, Globe } from 'lucide-react';
+import { COUNTRIES, validateCountryPhone } from '../utils/countries';
 
 export const OnboardingView: React.FC = () => {
   const { completeOnboarding, navigateTo } = useMealDirect();
   
   // States
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+  const [localPhone, setLocalPhone] = useState('');
   const [selectedCampus, setSelectedCampus] = useState(CAMPUSES[0].id);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,26 +23,13 @@ export const OnboardingView: React.FC = () => {
   const zoneBHostels = filteredLocs.filter(loc => loc.zone === 'Zone B' && loc.type === 'Hostel');
   const zoneBDepts = filteredLocs.filter(loc => loc.zone === 'Zone B' && loc.type === 'Department');
 
-  // Phone validator
-  const validatePhone = (num: string): boolean => {
-    // Basic Nigerian Phone check e.g. 08012345678 or +2348012345678, usually 11-14 chars
-    const clean = num.replace(/\s+/g, '');
-    if (clean.startsWith('+234')) {
-      return clean.length === 14 && /^\+234\d{10}$/.test(clean);
-    }
-    if (clean.startsWith('0')) {
-      return clean.length === 11 && /^0\d{10}$/.test(clean);
-    }
-    return false;
-  };
-
   const handleFinishOnboarding = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
     // Validate
-    if (!validatePhone(phoneNumber)) {
-      setErrorMessage('Please provide a valid Nigerian phone number (e.g. 08012345678 or +234...) to receive dispatch SMS.');
+    if (!validateCountryPhone(selectedCountry, localPhone)) {
+      setErrorMessage(`Please provide a valid phone number for ${selectedCountry.name}. e.g. ${selectedCountry.example}`);
       return;
     }
 
@@ -51,8 +40,12 @@ export const OnboardingView: React.FC = () => {
 
     setIsSubmitting(true);
 
+    const finalPhoneNumber = selectedCountry.code === 'OTHER'
+      ? localPhone.trim()
+      : `${selectedCountry.dialCode}${localPhone.trim().replace(/^0/, '')}`;
+
     setTimeout(() => {
-      completeOnboarding(phoneNumber, selectedCampus, selectedLocation);
+      completeOnboarding(finalPhoneNumber, selectedCampus, selectedLocation);
       setIsSubmitting(false);
     }, 1200);
   };
@@ -87,25 +80,50 @@ export const OnboardingView: React.FC = () => {
               Required for SMS notifications when the courier rider arrives at your preset zone desk.
             </p>
 
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-grey">
-                <span className="text-xs font-mono font-bold">+234</span>
+            <div className="flex gap-2.5">
+              <div className="w-1/3 shrink-0 relative">
+                <select
+                  value={selectedCountry.code}
+                  onChange={(e) => {
+                    const found = COUNTRIES.find(c => c.code === e.target.value);
+                    if (found) {
+                      setSelectedCountry(found);
+                      setLocalPhone('');
+                    }
+                  }}
+                  className="w-full px-3.5 py-3.5 bg-neutral-50/50 hover:bg-neutral-50 border border-emerald-deep/15 rounded-xl font-bold text-xs focus:ring-2 focus:ring-emerald-deep focus:outline-none appearance-none cursor-pointer h-full text-ink-deep"
+                  id="onboarding_country_select"
+                >
+                  {COUNTRIES.map(c => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.dialCode}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-grey text-[9px]">
+                  ▼
+                </div>
               </div>
-              <input
-                type="tel"
-                placeholder="8012345678"
-                value={phoneNumber.replace(/^\+234|^0/, '')}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  setPhoneNumber('0' + val);
-                }}
-                className="w-full pl-14 pr-4 py-3 bg-white border border-emerald-deep/15 rounded-xl font-mono text-sm focus:ring-2 focus:ring-emerald-deep focus:outline-none"
-                style={{ contentVisibility: 'auto' }}
-                required
-                id="onboarding_phone_input"
-              />
+
+              <div className="flex-1 relative">
+                <input
+                  type="tel"
+                  placeholder={selectedCountry.code === 'OTHER' ? '+234 803 123 4567' : selectedCountry.placeholder}
+                  value={localPhone}
+                  onChange={(e) => {
+                    // Normalize and strip non-digit characters unless it's OTHER (which needs '+' for dialcode)
+                    const allowedChars = selectedCountry.code === 'OTHER' ? /[^\d+]/g : /\D/g;
+                    setLocalPhone(e.target.value.replace(allowedChars, ''));
+                  }}
+                  className="w-full px-4 py-3 bg-white border border-emerald-deep/15 rounded-xl font-mono text-sm focus:ring-2 focus:ring-emerald-deep focus:outline-none font-bold text-ink-deep"
+                  required
+                  id="onboarding_phone_input"
+                />
+              </div>
             </div>
-            <span className="text-[10px] text-muted-grey mt-2 block">Format: 11 digits starting with 0. e.g. 08012345678</span>
+            <span className="text-[10px] text-muted-grey mt-2 block font-medium">
+              Format: {selectedCountry.example}
+            </span>
           </GlassPanel>
 
           {/* Section 2: Choose Preset Dispatch Terminal */}

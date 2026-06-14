@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useMealDirect } from '../store';
+import { useMealDirect, computeCustomMealPriceKobo } from '../store';
 import { VENDORS, getMenuItemsByVendor, formatNGN } from '../mockData';
 import { AppShell, GlassPanel, Currency } from './CommonUI';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { ArrowLeft, Clock, Star, Plus, Minus, ShoppingBag, ShoppingCart, Info, Check, ShieldAlert, Trash2, Flame, Sparkles, Heart } from 'lucide-react';
 import { CartItem, MenuItem } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface VendorDetailViewProps {
   vendorId: string;
@@ -18,7 +19,9 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
     updateCartItemSpoons,
     removeFromCart,
     clearCart,
-    navigateTo
+    navigateTo,
+    favoriteItemIds,
+    toggleFavoriteItem
   } = useMealDirect();
 
   // Simulated API loading state
@@ -49,11 +52,151 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
 
   const menuItems = getMenuItemsByVendor(vendorId);
 
+  // Constants for Venite Main cafeteria options
+  const FOOD_TYPES = [
+    'White Rice',
+    'Jollof Rice',
+    'Fried Rice',
+    'Spaghetti',
+    'Jollof Spaghetti',
+    'Fufu',
+    'Semo',
+    'Beans'
+  ];
+
+  const PROTEINS = ['Beef', 'Fish', 'Egg'];
+
+  const DRINKS = [
+    'None',
+    'Coke',
+    'Fanta',
+    'Schweppes',
+    '7up',
+    'Teem',
+    'Sprite',
+    'Pepsi',
+    'Sosa',
+    'Predator',
+    'Fearless',
+    'Malt',
+    'Nutrichoco',
+    'Nutrimilk',
+    'Fayrouz',
+    'Viju Milk'
+  ];
+
+  const getDrinkPriceNaira = (drinkName: string): number => {
+    const norm = drinkName.toLowerCase();
+    if (norm === 'none') return 0;
+    if (
+      norm.includes('coke') ||
+      norm.includes('fanta') ||
+      norm.includes('schweppes') ||
+      norm.includes('7up') ||
+      norm.includes('teem') ||
+      norm.includes('sprite') ||
+      norm.includes('pepsi') ||
+      norm.includes('sosa')
+    ) {
+      return 500;
+    }
+    if (
+      norm.includes('predator') ||
+      norm.includes('fearless') ||
+      norm.includes('malt')
+    ) {
+      return 600;
+    }
+    if (norm.includes('nutrichoco')) {
+      return 1000;
+    }
+    if (
+      norm.includes('nutrimilk') ||
+      norm.includes('fayrouz') ||
+      norm.includes('viju milk')
+    ) {
+      return 800;
+    }
+    return 0;
+  };
+
   // States
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [spoonCountTemp, setSpoonCountTemp] = useState<number>(1);
   const [showReplaceCartModal, setShowReplaceCartModal] = useState(false);
   const [pendingCartItem, setPendingCartItem] = useState<{ vId: string; item: CartItem } | null>(null);
+
+  // Custom meal parameters state (multi-select combo)
+  const [selectedFoods, setSelectedFoods] = useState<{ type: string; spoons: number }[]>([
+    { type: 'Jollof Rice', spoons: 3 }
+  ]);
+  const [selectedProteins, setSelectedProteins] = useState<{ type: string; qty: number; price?: number }[]>([
+    { type: 'Beef', qty: 1 }
+  ]);
+  const [customDrink, setCustomDrink] = useState<string>('None');
+  const [customMealQty, setCustomMealQty] = useState<number>(1);
+  const [customPlasticSpoons, setCustomPlasticSpoons] = useState<number>(1);
+  const [showLimitWarning, setShowLimitWarning] = useState<boolean>(false);
+
+  // Standard item popup modal temporary states
+  const [modalCustomFoodType, setModalCustomFoodType] = useState<string>('Jollof Rice');
+  const [modalCustomFoodSpoons, setModalCustomFoodSpoons] = useState<number>(3);
+  const [modalCustomProtein, setModalCustomProtein] = useState<string>('Beef');
+
+  // For compatibility with any legacy fields
+  const customFoodType = selectedFoods.map(f => `${f.type} (${f.spoons} Spn)`).join(', ');
+  const customFoodSpoons = selectedFoods.reduce((sum, f) => sum + f.spoons, 0);
+  const customProtein = selectedProteins.map(p => {
+    const isFish = p.type.toLowerCase().includes('fish');
+    const unitPrice = isFish ? (p.price || 50000) : (vendorId === 'ven_grill' && p.type.toLowerCase().includes('egg') ? 30000 : 50000);
+    return `${p.qty}x ${p.type} (₦${(unitPrice / 100).toFixed(0)} ea)`;
+  }).join(', ');
+
+  const currentPlateCostKobo = React.useMemo(() => {
+    const isGrill = vendorId === 'ven_grill';
+    const builderId = isGrill ? 'item_grill5' : 'item_bistro_custom';
+    return computeCustomMealPriceKobo(
+      builderId,
+      selectedFoods,
+      selectedProteins,
+      isGrill ? customDrink : undefined
+    );
+  }, [vendorId, selectedFoods, selectedProteins, customDrink]);
+
+  // Sync state once on mount or when vendorId shifts
+  useEffect(() => {
+    if (vendorId === 'ven_grill' || vendorId === 'ven_bistro') {
+      const isGrill = vendorId === 'ven_grill';
+      const bItemId = isGrill ? 'item_grill5' : 'item_bistro_custom';
+      const existing = cart && cart.vendorId === vendorId
+        ? cart.items.find(it => it.menuItemId === bItemId)
+        : null;
+
+      if (existing) {
+        if (existing.customFoodSelections && existing.customFoodSelections.length > 0) {
+          setSelectedFoods(existing.customFoodSelections);
+        } else {
+          setSelectedFoods([{ type: isGrill ? 'Jollof Rice' : 'White Rice', spoons: existing.customFoodSpoons || 3 }]);
+        }
+        if (existing.customProteinSelections && existing.customProteinSelections.length > 0) {
+          setSelectedProteins(existing.customProteinSelections);
+        } else {
+          setSelectedProteins([{ type: existing.customProtein || 'Beef', qty: 1 }]);
+        }
+        setCustomDrink(existing.customDrink || 'None');
+        setCustomMealQty(existing.quantity || 1);
+        setCustomPlasticSpoons(existing.spoonsCount || 1);
+      } else {
+        setSelectedFoods([
+          { type: isGrill ? 'Jollof Rice' : 'White Rice', spoons: 3 }
+        ]);
+        setSelectedProteins([{ type: 'Beef', qty: 1 }]);
+        setCustomDrink('None');
+        setCustomMealQty(1);
+        setCustomPlasticSpoons(1);
+      }
+    }
+  }, [vendorId]);
 
   // Nutrition state variables fetched from Gemini
   interface NutritionData {
@@ -67,6 +210,61 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
   }
   const [nutrition, setNutrition] = useState<NutritionData | null>(null);
   const [isNutritionLoading, setIsNutritionLoading] = useState(false);
+
+  // Cafeteria live custom meal nutrition
+  const [customNutrition, setCustomNutrition] = useState<NutritionData | null>(null);
+  const [isCustomNutritionLoading, setIsCustomNutritionLoading] = useState(false);
+
+  useEffect(() => {
+    if (vendorId !== 'ven_grill' && vendorId !== 'ven_bistro') return;
+    setIsCustomNutritionLoading(true);
+
+    const isGrill = vendorId === 'ven_grill';
+    const foodsStr = selectedFoods.map(f => `${f.spoons} spoons of ${f.type}`).join(', ');
+    const proteinsStr = selectedProteins.map(p => `${p.qty}x ${p.type}`).join(' and ');
+    const textName = `${foodsStr} with ${proteinsStr} (${customDrink})`;
+    const textDesc = `A catered student meal package with ${foodsStr}, choice protein Combo of ${proteinsStr}, and paired with a crisp ${customDrink} beverage.`;
+
+    const delayDebounce = setTimeout(() => {
+      fetch('/api/nutrition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemName: textName,
+          description: textDesc,
+          vendorName: isGrill ? 'Venite Main cafeteria' : 'Matade',
+          category: 'Mains'
+        })
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Network error');
+          return res.json();
+        })
+        .then(data => {
+          setCustomNutrition(data);
+        })
+        .catch(err => {
+          console.error('Error loading custom plate nutrition stats:', err);
+          const totalSpoonCount = selectedFoods.reduce((acc, curr) => acc + curr.spoons, 0);
+          const totalProteinCount = selectedProteins.reduce((acc, curr) => acc + curr.qty, 0);
+          const baseCal = totalSpoonCount * 140 + totalProteinCount * 110 + 120;
+          setCustomNutrition({
+            calories: baseCal,
+            protein: `${totalProteinCount * 10 + 8}g`,
+            carbs: `${totalSpoonCount * 28 + 35}g`,
+            fats: `${totalProteinCount * 5 + 6}g`,
+            allergens: ['None'],
+            healthTips: 'Traditional hot and highly nutritious combination suitable for standard active university days.',
+            isSimulated: true
+          });
+        })
+        .finally(() => {
+          setIsCustomNutritionLoading(false);
+        });
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [vendorId, selectedFoods, selectedProteins, customDrink]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -170,6 +368,10 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
   const handleOpenItemDetail = (item: MenuItem) => {
     const existing = cartItemsMap[item.id];
     setSpoonCountTemp(existing ? existing.spoonsCount : 1);
+    setModalCustomFoodType(existing?.customFoodType || 'Jollof Rice');
+    setModalCustomFoodSpoons(existing?.customFoodSpoons || 3);
+    setModalCustomProtein(existing?.customProtein || 'Beef');
+    setCustomDrink(existing?.customDrink || 'Malt');
     setSelectedItem(item);
   };
 
@@ -177,10 +379,23 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
     if (!selectedItem) return;
     const existing = cartItemsMap[selectedItem.id];
     
+    const isGrill = vendorId === 'ven_grill';
+    const payload: CartItem = {
+      menuItemId: selectedItem.id,
+      quantity: existing ? existing.quantity : 1,
+      spoonsCount: spoonCountTemp,
+      ...(isGrill ? {
+        customFoodType: modalCustomFoodType,
+        customFoodSpoons: modalCustomFoodSpoons,
+        customProtein: modalCustomProtein,
+        customDrink
+      } : {})
+    };
+    
     if (cart && cart.vendorId !== vendorId) {
       setPendingCartItem({
         vId: vendorId,
-        item: { menuItemId: selectedItem.id, quantity: 1, spoonsCount: spoonCountTemp }
+        item: payload
       });
       setSelectedItem(null);
       setShowReplaceCartModal(true);
@@ -188,19 +403,92 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
     }
 
     if (existing) {
-      updateCartItemSpoons(selectedItem.id, spoonCountTemp);
+      updateCartItemSpoons(
+        selectedItem.id,
+        spoonCountTemp,
+        isGrill ? modalCustomFoodType : undefined,
+        isGrill ? modalCustomFoodSpoons : undefined,
+        isGrill ? modalCustomProtein : undefined,
+        isGrill ? customDrink : undefined
+      );
     } else {
-      addToCart(vendorId, { menuItemId: selectedItem.id, quantity: 1, spoonsCount: spoonCountTemp });
+      addToCart(vendorId, payload);
     }
     setSelectedItem(null);
+  };
+
+  const handleSaveCustomMeal = () => {
+    const isGrill = vendorId === 'ven_grill';
+    const builderId = isGrill ? 'item_grill5' : 'item_bistro_custom';
+    const builderItem = menuItems.find(it => it.id === builderId);
+    if (!builderItem) return;
+
+    const payload: CartItem = {
+      menuItemId: builderItem.id,
+      quantity: customMealQty,
+      spoonsCount: customPlasticSpoons,
+      customFoodType,
+      customFoodSpoons,
+      customProtein,
+      customDrink,
+      customFoodSelections: selectedFoods,
+      customProteinSelections: selectedProteins
+    };
+
+    if (cart && cart.vendorId !== vendorId) {
+      setPendingCartItem({
+        vId: vendorId,
+        item: payload
+      });
+      setShowReplaceCartModal(true);
+      return;
+    }
+
+    const existingInCart = cart && cart.vendorId === vendorId
+      ? cart.items.find(it => it.menuItemId === builderId)
+      : null;
+
+    if (existingInCart) {
+      updateCartItemSpoons(
+        builderId,
+        customPlasticSpoons,
+        customFoodType,
+        customFoodSpoons,
+        customProtein,
+        customDrink,
+        customMealQty,
+        selectedFoods,
+        selectedProteins
+      );
+    } else {
+      addToCart(vendorId, payload);
+    }
   };
 
   // Sticky bottom summation
   const activeItemsCostKobo = React.useMemo(() => {
     if (!cart || cart.vendorId !== vendorId) return 0;
     return cart.items.reduce((sum, item) => {
+      let price = 0;
       const menuIt = menuItems.find(mi => mi.id === item.menuItemId);
-      return sum + (menuIt ? menuIt.priceKobo * item.quantity : 0);
+      if (menuIt) {
+        price = menuIt.priceKobo;
+      }
+      
+      // Calculate dynamic price if match builder items
+      if (item.menuItemId === 'item_grill5' || item.menuItemId === 'item_bistro_custom') {
+        price = computeCustomMealPriceKobo(
+          item.menuItemId,
+          item.customFoodSelections,
+          item.customProteinSelections,
+          item.customDrink,
+          item.customFoodType,
+          item.customFoodSpoons,
+          item.customProtein
+        );
+      }
+
+      return sum + (price * item.quantity);
     }, 0);
   }, [cart, vendorId, menuItems]);
 
@@ -259,91 +547,584 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
             </div>
           </section>
 
-          {/* 2. Group Categories with menu items list */}
-          <section className="space-y-8" id="menu_items_stage">
-            {categories.map(category => {
-              const items = menuItems.filter(mi => mi.category === category);
-              return (
-                <div key={category}>
-                  <h3 className="font-display font-medium text-xs tracking-widest text-emerald-strong bg-emerald-deep/5 px-2.5 py-1 rounded inline-block uppercase mb-4">
-                    {category}
-                  </h3>
+          {/* 2. Group Categories with menu items list OR Custom Form for Cafeteria */}
+          {vendorId === 'ven_grill' || vendorId === 'ven_bistro' ? (
+            <div className="space-y-6 max-w-3xl mx-auto" id="custom_meal_builder_stage">
+              <GlassPanel className="p-6 md:p-8 space-y-6 border border-emerald-deep/12 shadow-sm bg-white rounded-3xl">
+                <div className="flex items-center justify-between gap-4 mb-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2.5 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-sm">
+                      <Flame className="w-5 h-5 fill-white text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-black text-sm text-emerald-strong">Dynamic Campus Plate Builder</h3>
+                      <p className="text-[10px] text-muted-grey">Build complex combo meals from {vendor.name} in real time</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[8px] font-bold text-amber-700 bg-amber-50/80 px-2 py-1 rounded-sm border border-amber-200 uppercase tracking-widest">
+                      takeaway packaging included (+₦200)
+                    </span>
+                  </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {items.map(item => {
-                      const activeInCart = cartItemsMap[item.id];
+                {/* 1. Main Dishes with Spoons Counter */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-emerald-strong block uppercase tracking-wider">
+                      1. Customize Your Main Dishes (Up to 4 types)
+                    </label>
+                    <span className="text-[9.5px] font-medium text-muted-grey">
+                      Spoons: <strong className="text-ink-deep">{customFoodSpoons}</strong> total on plate
+                    </span>
+                  </div>
+
+                  {showLimitWarning && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[10px] text-amber-900 font-bold flex items-center gap-2"
+                    >
+                      <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Maximum 4 distinct main menus can be selected for a single combo takeaway pack.</span>
+                    </motion.div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(vendorId === 'ven_grill' 
+                      ? ['White Rice', 'Jollof Rice', 'Fried Rice', 'Spaghetti', 'Jollof Spaghetti', 'Fufu', 'Semo', 'Beans'] 
+                      : ['Jollof Rice', 'White Rice', 'Ofada Rice', 'Peppersoup', 'Jollof Spaghetti', 'Semo', 'Eba']
+                    ).map(dish => {
+                      const selItem = selectedFoods.find(sf => sf.type === dish);
+                      const spoonsVal = selItem ? selItem.spoons : 0;
                       
+                      // Calculate exact base price & unit label dynamically
+                      let basePricePerSpoon = 500;
+                      let unitLabel = 'spoon';
+                      if (vendorId === 'ven_grill') {
+                        const norm = dish.toLowerCase();
+                        if (norm.includes('jollof rice') || norm.includes('white rice')) {
+                          basePricePerSpoon = 400;
+                        } else if (norm.includes('beans')) {
+                          basePricePerSpoon = 300;
+                        } else if (norm.includes('fufu') || norm.includes('semo')) {
+                          basePricePerSpoon = 250;
+                          unitLabel = 'piece';
+                        }
+                      } else {
+                        // Matade (ven_bistro)
+                        if (dish.toLowerCase().includes('peppersoup')) {
+                          basePricePerSpoon = 2500;
+                          unitLabel = 'portion';
+                        } else if (dish.toLowerCase().includes('semo') || dish.toLowerCase().includes('eba')) {
+                          unitLabel = 'piece';
+                        }
+                      }
+
                       return (
                         <div
-                          key={item.id}
-                          className="bg-white rounded-2xl border border-emerald-deep/6 p-4 flex gap-4 shadow-xs hover:border-emerald-deep/15 transition relative"
+                          key={dish}
+                          className={`p-3.5 rounded-2xl border transition duration-200 flex items-center justify-between gap-4 ${
+                            spoonsVal > 0
+                              ? 'bg-emerald-deep/5 border-emerald-deep/30 shadow-xs'
+                              : 'bg-neutral-50/40 border-neutral-200/50 hover:bg-neutral-50 hover:border-neutral-200'
+                          }`}
                         >
-                          <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-neutral-100 relative">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                            {activeInCart && (
-                              <div className="absolute inset-0 bg-emerald-strong/20 backdrop-blur-xs flex items-center justify-center text-white" />
-                            )}
+                          <div>
+                            <div className="font-bold text-xs text-ink-deep flex items-center gap-1.5">
+                              {spoonsVal > 0 && <Check className="w-3.5 h-3.5 text-emerald-strong shrink-0" />}
+                              <span>{dish}</span>
+                            </div>
+                            <span className="text-[9px] text-muted-grey mt-0.5 block">
+                              ₦{basePricePerSpoon} / {unitLabel}
+                            </span>
                           </div>
 
-                          <div className="flex-1 flex flex-col justify-between">
+                          {spoonsVal === 0 ? (
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.94 }}
+                              transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                              onClick={() => {
+                                const activeDistinctFoods = selectedFoods.filter(sf => sf.type !== dish && sf.spoons > 0);
+                                if (activeDistinctFoods.length >= 4) {
+                                  setShowLimitWarning(true);
+                                  setTimeout(() => setShowLimitWarning(false), 3000);
+                                  return;
+                                }
+                                setSelectedFoods(prev => [...prev, { type: dish, spoons: 1 }]);
+                              }}
+                              className="px-3.5 py-1.5 bg-white hover:bg-neutral-100 border border-neutral-300 text-[10px] font-black text-emerald-strong rounded-xl cursor-pointer flex items-center gap-1 shadow-2xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add</span>
+                            </motion.button>
+                          ) : (
+                            <div className="flex items-center gap-2 bg-white px-2 py-1.5 border border-emerald-deep/15 rounded-xl shadow-2xs">
+                              <motion.button
+                                type="button"
+                                whileTap={{ scale: 0.88 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                onClick={() => {
+                                  if (spoonsVal - 1 <= 0) {
+                                    setSelectedFoods(prev => prev.filter(sf => sf.type !== dish));
+                                  } else {
+                                    setSelectedFoods(prev => prev.map(sf => sf.type === dish ? { ...sf, spoons: spoonsVal - 1 } : sf));
+                                  }
+                                }}
+                                className="w-5.5 h-5.5 rounded bg-neutral-100 text-ink-deep flex items-center justify-center font-bold text-xs cursor-pointer select-none"
+                              >
+                                -
+                              </motion.button>
+                              <span className="text-[10px] font-black font-mono text-emerald-strong min-w-10 text-center">
+                                {spoonsVal} {unitLabel === 'spoon' ? 'Spn' : unitLabel === 'piece' ? 'Pcs' : 'Port'}
+                              </span>
+                              <motion.button
+                                type="button"
+                                whileTap={{ scale: 0.88 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                onClick={() => {
+                                  setSelectedFoods(prev => prev.map(sf => sf.type === dish ? { ...sf, spoons: Math.min(10, spoonsVal + 1) } : sf));
+                                }}
+                                className="w-5.5 h-5.5 rounded bg-neutral-100 text-ink-deep flex items-center justify-center font-bold text-xs cursor-pointer select-none"
+                              >
+                                +
+                              </motion.button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Protein Combo Selection */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-emerald-strong block uppercase tracking-wider">
+                      2. Select Your Preferred Proteins (Combos Allowed)
+                    </label>
+                    <span className="text-[9px] font-medium text-muted-grey">
+                      Total Protein Cost: <strong className="text-ink-deep">₦{
+                        (selectedProteins.reduce((sum, p) => {
+                          const isFish = p.type.toLowerCase().includes('fish');
+                          const unitPrice = isFish ? (p.price || 50000) : (vendorId === 'ven_grill' && p.type.toLowerCase().includes('egg') ? 30000 : 50000);
+                          return sum + (unitPrice * p.qty);
+                        }, 0) / 100).toFixed(0)
+                      }</strong>
+                    </span>
+                  </div>
+                  <p className="text-[9.5px] text-muted-grey">Add as many as you want of any choice. Customize quantity of each protein below.</p>
+                  
+                  <div className="space-y-2.5">
+                    {(vendorId === 'ven_grill' 
+                      ? ['Beef', 'Fish', 'Egg', 'Ponmo'] 
+                      : ['Beef', 'Fish(Cote)', 'Egg', 'Ponmo']
+                    ).map(proteinType => {
+                      const existing = selectedProteins.find(p => p.type === proteinType);
+                      const isSelected = !!existing;
+                      const qtyVal = existing ? existing.qty : 0;
+                      
+                      // Determine display base price
+                      let unitPriceNaira = 500;
+                      if (vendorId === 'ven_grill') {
+                        if (proteinType === 'Egg') unitPriceNaira = 300;
+                        else if (proteinType === 'Fish') unitPriceNaira = existing?.price ? (existing.price / 100) : 500; // default fish price is 500
+                      }
+
+                      const isGrillFish = vendorId === 'ven_grill' && proteinType === 'Fish';
+
+                      return (
+                        <div
+                          key={proteinType}
+                          className={`p-3.5 rounded-2xl border transition duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                            isSelected
+                              ? 'bg-amber-500/5 border-amber-500/25 shadow-xs'
+                              : 'bg-neutral-50/40 border-neutral-200/50 hover:bg-neutral-50 hover:border-neutral-200'
+                          }`}
+                        >
+                          {/* Info Details */}
+                          <div className="flex items-start gap-2.5">
+                            <div className={`w-5 h-5 rounded-md border mt-0.5 flex items-center justify-center shrink-0 transition ${
+                              isSelected ? 'bg-amber-500 border-amber-600 text-amber-950' : 'bg-white border-neutral-300'
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3px]" />}
+                            </div>
                             <div>
-                              <div className="flex items-start justify-between gap-2">
-                                <h4 className="font-display font-bold text-xs text-emerald-strong leading-normal">{item.name}</h4>
-                                <button
-                                  onClick={() => handleOpenItemDetail(item)}
-                                  className="text-muted-grey hover:text-emerald-deep p-1 rounded-md transition cursor-pointer"
-                                  title="More details and spoon choices"
-                                >
-                                  <Info className="w-3.5 h-3.5" />
-                                </button>
+                              <div className="font-bold text-xs text-ink-deep flex items-center gap-1.5">
+                                <span>{proteinType}</span>
+                                {isSelected && (
+                                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-sm bg-amber-100 text-amber-800 border border-amber-200">
+                                    {qtyVal} Select
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-[10px] text-muted-grey line-clamp-2 mt-1 leading-relaxed">
-                                {item.description}
-                              </p>
+                              <span className="text-[9px] text-muted-grey mt-0.5 block">
+                                {isGrillFish ? 'Varying price depending on your choice' : `₦${unitPriceNaira} each`}
+                              </span>
                             </div>
+                          </div>
 
-                            <div className="flex items-center justify-between mt-3">
-                              <Currency kobo={item.priceKobo} className="text-xs text-ink-deep" />
-
-                              {/* Stepper controls */}
-                              {activeInCart ? (
-                                <div className="flex items-center gap-2 bg-emerald-deep/5 border border-emerald-deep/12 rounded-lg p-1">
-                                  <button
-                                    onClick={() => handleStepSubtract(item)}
-                                    className="w-6 h-6 rounded-md hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center cursor-pointer transition"
-                                  >
-                                    <Minus className="w-3.5 h-3.5" />
-                                  </button>
-                                  <span className="text-xs font-bold font-mono text-emerald-strong px-1.5">{activeInCart.quantity}</span>
-                                  <button
-                                    onClick={() => handleStepAdd(item)}
-                                    className="w-6 h-6 rounded-md hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center cursor-pointer transition"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => handleStepAdd(item)}
-                                  className="bg-emerald-deep hover:bg-emerald-strong text-white rounded-lg p-1 px-3.5 text-[10px] font-bold cursor-pointer transition shadow-sm hover:scale-[1.01] active:scale-95 flex items-center gap-1"
+                          {/* Steppers & Fish Price dropdown */}
+                          <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
+                            {/* If it is Grill Fish and selected, show the price dropdown picker */}
+                            {isGrillFish && isSelected && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[8.5px] font-bold text-muted-grey uppercase tracking-wider">
+                                  Price:
+                                </span>
+                                <select
+                                  value={existing.price || 50000}
+                                  onChange={(e) => {
+                                    const priceKobo = Number(e.target.value);
+                                    setSelectedProteins(prev =>
+                                      prev.map(p => p.type === 'Fish' ? { ...p, price: priceKobo } : p)
+                                    );
+                                  }}
+                                  className="px-2.5 py-1 bg-white border border-neutral-300 rounded-lg text-[10px] font-bold text-ink-deep cursor-pointer focus:outline-none"
                                 >
-                                  <Plus className="w-3.5 h-3.5" /> Add
-                                </button>
-                              )}
-                            </div>
+                                  <option value={30000}>₦300</option>
+                                  <option value={40000}>₦400</option>
+                                  <option value={50000}>₦500</option>
+                                  <option value={60000}>₦600</option>
+                                  <option value={70000}>₦700</option>
+                                  <option value={80000}>₦800</option>
+                                </select>
+                              </div>
+                            )}
+
+                            {/* Stepper Controls */}
+                            {!isSelected ? (
+                              <motion.button
+                                type="button"
+                                whileTap={{ scale: 0.94 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                onClick={() => {
+                                  let initialPrice: number | undefined = undefined;
+                                  if (isGrillFish) initialPrice = 50000; // default ₦500 fish
+                                  setSelectedProteins(prev => [...prev, { type: proteinType, qty: 1, price: initialPrice }]);
+                                }}
+                                className="px-3.5 py-1.5 bg-white hover:bg-neutral-100 border border-neutral-300 text-[10px] font-black text-amber-600 rounded-xl cursor-pointer flex items-center gap-1 shadow-2xs"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add</span>
+                              </motion.button>
+                            ) : (
+                              <div className="flex items-center gap-2 bg-white px-2 py-1.5 border border-amber-500/15 rounded-xl shadow-2xs">
+                                <motion.button
+                                  type="button"
+                                  whileTap={{ scale: 0.88 }}
+                                  transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                  onClick={() => {
+                                    if (qtyVal - 1 <= 0) {
+                                      setSelectedProteins(prev => prev.filter(p => p.type !== proteinType));
+                                    } else {
+                                      setSelectedProteins(prev =>
+                                        prev.map(p => p.type === proteinType ? { ...p, qty: qtyVal - 1 } : p)
+                                      );
+                                    }
+                                  }}
+                                  className="w-5.5 h-5.5 rounded bg-neutral-100 text-ink-deep flex items-center justify-center font-bold text-xs cursor-pointer select-none"
+                                >
+                                  -
+                                </motion.button>
+                                <span className="text-[10px] font-black font-mono text-amber-600 min-w-8 text-center">
+                                  {qtyVal} unit
+                                </span>
+                                <motion.button
+                                  type="button"
+                                  whileTap={{ scale: 0.88 }}
+                                  transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                                  onClick={() => {
+                                    setSelectedProteins(prev =>
+                                      prev.map(p => p.type === proteinType ? { ...p, qty: Math.min(10, qtyVal + 1) } : p)
+                                    );
+                                  }}
+                                  className="w-5.5 h-5.5 rounded bg-neutral-100 text-ink-deep flex items-center justify-center font-bold text-xs cursor-pointer select-none"
+                                >
+                                  +
+                                </motion.button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-              );
-            })}
-          </section>
+
+                {/* 3. Choice of Ice-Cold Drink */}
+                {vendorId === 'ven_grill' && (
+                  <div className="space-y-1.5 pt-2">
+                    <label className="text-[10px] font-bold text-emerald-strong block uppercase tracking-wider" htmlFor="combo_drink_type_inline">
+                      3. Pair with an Ice-Cold Drink
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="combo_drink_type_inline"
+                        value={customDrink}
+                        onChange={(e) => setCustomDrink(e.target.value)}
+                        className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs font-bold text-ink-deep focus:ring-2 focus:ring-emerald-deep focus:border-emerald-deep focus:outline-none cursor-pointer"
+                      >
+                        {DRINKS.map(drink => {
+                          const priceNum = getDrinkPriceNaira(drink);
+                          return (
+                            <option key={drink} value={drink}>
+                              {drink === 'None' ? 'No Drink (None)' : `${drink} ${priceNum > 0 ? `(+₦${priceNum})` : ''}`}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Packs quantity and optional plastic spoons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  {/* Packs Stepper */}
+                  <div className="bg-neutral-50 p-4 border border-neutral-200/50 rounded-2xl flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase text-emerald-strong tracking-wide block">How Many Packs?</span>
+                      <span className="text-[9px] text-muted-grey block">Number of identical combo plates</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.88 }}
+                        onClick={() => setCustomMealQty(prev => Math.max(1, prev - 1))}
+                        className="w-7 h-7 rounded-lg bg-emerald-deep/5 hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center font-bold text-sm cursor-pointer transition select-none"
+                      >
+                        -
+                      </motion.button>
+                      <span className="text-xs font-black font-mono text-emerald-strong min-w-4 text-center">{customMealQty}</span>
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.88 }}
+                        onClick={() => setCustomMealQty(prev => Math.min(10, prev + 1))}
+                        className="w-7 h-7 rounded-lg bg-emerald-deep/5 hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center font-bold text-sm cursor-pointer transition select-none"
+                      >
+                        +
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Utensils Stepper */}
+                  <div className="bg-neutral-50 p-4 border border-neutral-200/50 rounded-2xl flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black uppercase text-emerald-strong tracking-wide block">Spoons requested</span>
+                      <span className="text-[9px] text-muted-grey block">Plastic spoons needed (Max 3)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.88 }}
+                        onClick={() => setCustomPlasticSpoons(prev => Math.max(0, prev - 1))}
+                        className="w-7 h-7 rounded-lg bg-emerald-deep/5 hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center font-bold text-sm cursor-pointer transition select-none"
+                      >
+                        -
+                      </motion.button>
+                      <span className="text-xs font-black font-mono text-emerald-strong min-w-4 text-center">{customPlasticSpoons}</span>
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.88 }}
+                        onClick={() => setCustomPlasticSpoons(prev => Math.min(3, prev + 1))}
+                        className="w-7 h-7 rounded-lg bg-emerald-deep/5 hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center font-bold text-sm cursor-pointer transition select-none"
+                      >
+                        +
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Dynamic Live nutrition panel */}
+                <div className="bg-emerald-deep/5 p-4 rounded-3xl border border-emerald-deep/8 space-y-2">
+                  <div className="flex items-center justify-between border-b border-emerald-deep/10 pb-2">
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-strong uppercase tracking-wider">
+                      <Sparkles className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
+                      <span>Plate Calorie breakdown (Dynamic AI estimate)</span>
+                    </span>
+                    <span className="text-[8px] font-bold text-emerald-strong/80 bg-white/70 px-2 py-0.5 rounded border border-emerald-deep/6 uppercase tracking-wider">
+                      Powered by Gemini 3.5
+                    </span>
+                  </div>
+
+                  {isCustomNutritionLoading ? (
+                    <div className="space-y-2 animate-pulse min-h-[60px] py-1">
+                      <div className="h-3 bg-emerald-deep/10 rounded w-1/3" />
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="h-9 bg-emerald-deep/10 rounded" />
+                        <div className="h-9 bg-emerald-deep/10 rounded" />
+                        <div className="h-9 bg-emerald-deep/10 rounded" />
+                        <div className="h-9 bg-emerald-deep/10 rounded" />
+                      </div>
+                    </div>
+                  ) : customNutrition ? (
+                    <div className="space-y-2.5">
+                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold">
+                        <div className="bg-white p-2 rounded-xl border border-emerald-deep/6">
+                          <span className="text-[7.5px] font-extrabold uppercase text-muted-grey block tracking-wider">Calories</span>
+                          <span className="text-xs font-black text-emerald-strong">{customNutrition.calories} <span className="text-[9px] font-medium">kcal</span></span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-emerald-deep/6">
+                          <span className="text-[7.5px] font-extrabold uppercase text-muted-grey block tracking-wider">Protein</span>
+                          <span className="text-xs font-extrabold text-emerald-strong">{customNutrition.protein}</span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-emerald-deep/6">
+                          <span className="text-[7.5px] font-extrabold uppercase text-muted-grey block tracking-wider">Carbs</span>
+                          <span className="text-xs font-extrabold text-emerald-strong">{customNutrition.carbs}</span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-emerald-deep/6">
+                          <span className="text-[7.5px] font-extrabold uppercase text-muted-grey block tracking-wider">Fats</span>
+                          <span className="text-xs font-extrabold text-emerald-strong">{customNutrition.fats}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-1.5 items-start text-[10px] italic text-muted-grey bg-white/40 p-2.5 rounded-xl border border-neutral-100">
+                        <Info className="w-3.5 h-3.5 text-emerald-deep shrink-0 mt-0.5" />
+                        <span>{customNutrition.healthTips}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-grey italic">Adjust choices to load plate nutrition...</p>
+                  )}
+                </div>
+
+                {/* 6. Save choice Call To Action Button with Dynamic Pricing */}
+                <div className="pt-2 border-t border-neutral-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-center sm:text-left">
+                    <span className="text-[10px] font-rose-grey block uppercase font-bold tracking-wider text-muted-grey">Total Cost estimate</span>
+                    <div className="text-xl font-black text-emerald-strong font-mono">
+                      {formatNGN(currentPlateCostKobo * customMealQty)}
+                    </div>
+                    <span className="text-[8.5px] text-muted-grey block mt-0.5">
+                      (Includes ₦200 takeaway surcharge per pack)
+                    </span>
+                  </div>
+
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                    onClick={handleSaveCustomMeal}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-emerald-deep hover:bg-emerald-strong text-white font-bold text-xs rounded-2xl shadow-lg transition duration-200 cursor-pointer text-center hover:scale-[1.01] flex items-center justify-center gap-2"
+                  >
+                    <ShoppingBag className="w-4 h-4 text-mango-warm" />
+                    <span>
+                      {cart && cart.vendorId === vendorId && cart.items.some(it => it.menuItemId === (vendorId === 'ven_grill' ? 'item_grill5' : 'item_bistro_custom')) 
+                        ? 'Update Custom Plate in Cart' 
+                        : 'Add Custom Plate to Cart'}
+                    </span>
+                  </motion.button>
+                </div>
+              </GlassPanel>
+            </div>
+          ) : (
+            <section className="space-y-8" id="menu_items_stage">
+              {categories.map(category => {
+                const items = menuItems.filter(mi => mi.category === category);
+                return (
+                  <div key={category}>
+                    <h3 className="font-display font-medium text-xs tracking-widest text-emerald-strong bg-emerald-deep/5 px-2.5 py-1 rounded inline-block uppercase mb-4">
+                      {category}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {items.map(item => {
+                        const activeInCart = cartItemsMap[item.id];
+                        const isFav = favoriteItemIds?.includes(item.id);
+                        
+                        return (
+                          <div
+                            key={item.id}
+                            className="bg-white rounded-2xl border border-emerald-deep/6 p-4 flex gap-4 shadow-xs hover:border-emerald-deep/15 transition relative animate-fade-in"
+                            id={`menu_item_card_${item.id}`}
+                          >
+                            <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-neutral-100 relative">
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                              {activeInCart && (
+                                <div className="absolute inset-0 bg-emerald-strong/20 backdrop-blur-xs flex items-center justify-center text-white" />
+                              )}
+                            </div>
+
+                            <div className="flex-1 flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="font-display font-bold text-xs text-emerald-strong leading-normal">{item.name}</h4>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleFavoriteItem(item.id);
+                                      }}
+                                      className={`p-1 rounded-md transition cursor-pointer ${
+                                        isFav ? 'text-rose-500 hover:text-rose-600' : 'text-neutral-400 hover:text-rose-500'
+                                      }`}
+                                      title={isFav ? "Remove from Favorites" : "Save to Favorites"}
+                                      id={`fav_toggle_${item.id}`}
+                                    >
+                                      <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-rose-500' : ''}`} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenItemDetail(item)}
+                                      className="text-muted-grey hover:text-emerald-deep p-1 rounded-md transition cursor-pointer"
+                                      title="More details and spoon choices"
+                                    >
+                                      <Info className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="text-[10px] text-muted-grey line-clamp-2 mt-1 leading-relaxed">
+                                  {item.description}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between mt-3">
+                                <Currency kobo={item.priceKobo} className="text-xs text-ink-deep" />
+
+                                {/* Stepper controls */}
+                                {activeInCart ? (
+                                  <div className="flex items-center gap-2 bg-emerald-deep/5 border border-emerald-deep/12 rounded-lg p-1">
+                                    <button
+                                      onClick={() => handleStepSubtract(item)}
+                                      className="w-6 h-6 rounded-md hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center cursor-pointer transition"
+                                      id={`step_sub_${item.id}`}
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="text-xs font-bold font-mono text-emerald-strong px-1.5">{activeInCart.quantity}</span>
+                                    <button
+                                      onClick={() => handleStepAdd(item)}
+                                      className="w-6 h-6 rounded-md hover:bg-emerald-deep/10 text-emerald-strong flex items-center justify-center cursor-pointer transition"
+                                      id={`step_add_${item.id}`}
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleStepAdd(item)}
+                                    className="bg-emerald-deep hover:bg-emerald-strong text-white rounded-lg p-1 px-3.5 text-[10px] font-bold cursor-pointer transition shadow-sm hover:scale-[1.01] active:scale-95 flex items-center gap-1"
+                                    id={`quick_add_${item.id}`}
+                                  >
+                                    <Plus className="w-3.5 h-3.5" /> Quick Add
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
         </>
       )}
 
@@ -377,7 +1158,7 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
       {/* Detail Modal Component for Spoons customization */}
       {selectedItem && (
         <dialog open className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" id="item_detail_dialog">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-emerald-deep/12 shadow-2xl flex flex-col gap-5">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full max-h-[88vh] overflow-y-auto border border-emerald-deep/12 shadow-2xl flex flex-col gap-5">
             <div className="text-center">
               <div className="w-20 h-20 rounded-2xl overflow-hidden mx-auto mb-3 bg-neutral-100">
                 <img
@@ -464,6 +1245,94 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                 </div>
               )}
             </div>
+
+            {vendorId === 'ven_grill' && (
+              <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 space-y-3.5">
+                <div className="flex items-center gap-1.5 mb-1 text-xs font-bold text-amber-800">
+                  <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+                  <span>Venite Main cafeteria Plate Customization</span>
+                </div>
+
+                {/* 1. Type of Food */}
+                <div>
+                  <label className="text-[9px] font-bold text-amber-900 block mb-1.5 uppercase tracking-wider">Select Main Food Type</label>
+                  <select
+                    value={modalCustomFoodType}
+                    onChange={(e) => setModalCustomFoodType(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-ink-deep focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    id="combo_food_type"
+                  >
+                    {['White Rice', 'Jollof Rice', 'Fried Rice', 'Spaghetti', 'Jollof Spaghetti', 'Fufu', 'Semo', 'Beans'].map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Quantity of Food: Number of Spoons */}
+                <div>
+                  <label className="text-[9px] font-bold text-amber-900 block mb-1.5 uppercase tracking-wider">Portion Quantity ({modalCustomFoodSpoons} Spoons)</label>
+                  <div className="flex items-center justify-between bg-white border border-amber-200 rounded-xl p-2 px-3">
+                    <span className="text-[10px] text-muted-grey font-medium">How many spoons of food?</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setModalCustomFoodSpoons(prev => Math.max(1, prev - 1))}
+                        className="w-6 h-6 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs"
+                      >
+                        -
+                      </button>
+                      <span className="text-xs font-black font-mono text-amber-950 min-w-4 text-center">{modalCustomFoodSpoons}</span>
+                      <button
+                        type="button"
+                        onClick={() => setModalCustomFoodSpoons(prev => Math.min(10, prev + 1))}
+                        className="w-6 h-6 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Protein Selection */}
+                <div>
+                  <label className="text-[9px] font-bold text-amber-900 block mb-1.5 uppercase tracking-wider">Preferred Protein (Choose One)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['Beef', 'Fish', 'Egg', 'Ponmo'].map(protein => {
+                      const isSelected = modalCustomProtein === protein;
+                      return (
+                        <button
+                          key={protein}
+                          type="button"
+                          onClick={() => setModalCustomProtein(protein)}
+                          className={`py-2 px-3 text-xs font-black rounded-lg border text-center transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500 border-amber-600 text-amber-950 shadow-xs'
+                              : 'bg-white border-amber-100 text-amber-900 hover:bg-amber-50/50'
+                          }`}
+                        >
+                          {protein}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. Drink Selection */}
+                <div>
+                  <label className="text-[9px] font-bold text-amber-900 block mb-1.5 uppercase tracking-wider">Choice of Ice-Cold Drink</label>
+                  <select
+                    value={customDrink}
+                    onChange={(e) => setCustomDrink(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-xs font-bold text-ink-deep focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    id="combo_drink_type"
+                  >
+                    {DRINKS.map(drink => (
+                      <option key={drink} value={drink}>{drink}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             <div className="bg-neutral-50 p-4 rounded-2xl border border-emerald-deep/8">
               <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-emerald-strong justify-center">
