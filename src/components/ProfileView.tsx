@@ -296,16 +296,16 @@ export const ProfileView: React.FC = () => {
 
 		// Interactive behaviors
 		bars
-			.on("mouseover", function (event, d) {
+			.on("mouseover", function (_event, _d) {
 				d3.select(this).attr("opacity", 1.0).attr("fill", "#059669");
 			})
-			.on("mouseout", function (event, d) {
+			.on("mouseout", function (_event, d) {
 				const idx = spendHistory.indexOf(d);
 				d3.select(this)
 					.attr("fill", idx === selectedWeek ? "#10b981" : "#111827")
 					.attr("opacity", idx === selectedWeek ? 1.0 : 0.6);
 			})
-			.on("click", (event, d) => {
+			.on("click", (_event, d) => {
 				const idx = spendHistory.indexOf(d);
 				setSelectedWeek(idx);
 			});
@@ -570,7 +570,7 @@ export const ProfileView: React.FC = () => {
 
 					<div className="space-y-4">
 						<div>
-							<label className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
+							<label htmlFor="profile_name_input" className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
 								Full Student Name
 							</label>
 							<input
@@ -584,7 +584,7 @@ export const ProfileView: React.FC = () => {
 						</div>
 
 						<div>
-							<label className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
+							<label htmlFor="profile_email_input" className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
 								Email Address
 							</label>
 							<input
@@ -597,7 +597,7 @@ export const ProfileView: React.FC = () => {
 						</div>
 
 						<div>
-							<label className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
+							<label htmlFor="profile_phone_input" className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
 								Emergency Contact Mobile ({selectedCountry.name})
 							</label>
 							<div className="flex gap-2.5">
@@ -667,10 +667,16 @@ export const ProfileView: React.FC = () => {
 
 					<div className="space-y-4">
 						<div>
-							<label className="text-[9px] font-bold text-muted-grey block mb-2 uppercase">
+							<div
+								id="dietary_preferences_label"
+								className="text-[9px] font-bold text-muted-grey block mb-2 uppercase"
+							>
 								Dietary Preferences
-							</label>
-							<div className="flex flex-wrap gap-2">
+							</div>
+							<fieldset
+								className="flex flex-wrap gap-2"
+								aria-labelledby="dietary_preferences_label"
+							>
 								{["Vegan", "Vegetarian", "Halal", "Keto", "Gluten-Free"].map(
 									(diet) => (
 										<label
@@ -687,15 +693,19 @@ export const ProfileView: React.FC = () => {
 										</label>
 									),
 								)}
-							</div>
+							</fieldset>
 						</div>
 
 						<div>
-							<label className="text-[9px] font-bold text-muted-grey block mb-2 uppercase">
+							<label
+								htmlFor="profile_allergies_input"
+								className="text-[9px] font-bold text-muted-grey block mb-2 uppercase"
+							>
 								Allergies
 							</label>
 							<div className="relative">
 								<input
+									id="profile_allergies_input"
 									type="text"
 									placeholder="e.g. Peanuts, Shellfish, Dairy"
 									className="w-full px-4 py-3 bg-white border border-emerald-deep/15 rounded-xl text-xs focus:ring-2 focus:ring-emerald-deep focus:outline-none"
@@ -703,105 +713,6 @@ export const ProfileView: React.FC = () => {
 							</div>
 						</div>
 					</div>
-				</GlassPanel>
-
-				{/* Payments & Earnings */}
-				<GlassPanel className="p-6">
-					<h3 className="font-display font-bold text-sm text-emerald-strong mb-4 flex items-center gap-1.5">
-						<CreditCard className="w-4.5 h-4.5 text-emerald-deep" />
-						Payments & Earnings
-					</h3>
-
-					<div className="space-y-4">
-						<div className="bg-emerald-deep p-4 rounded-2xl text-white relative overflow-hidden">
-							<div className="absolute right-0 top-0 translate-x-3 -translate-y-3 w-16 h-16 bg-white/10 rounded-full blur-xs pointer-events-none" />
-							<div className="flex justify-between items-end mb-2">
-								<div>
-									<span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
-										Meal Direct Wallet
-									</span>
-									<div className="font-display font-black text-2xl mt-0.5">
-										₦14,500<span className="text-sm opacity-80">.00</span>
-									</div>
-								</div>
-								<button
-									type="button"
-									className="px-3 py-1.5 bg-white text-emerald-deep rounded-lg text-[10px] font-bold shadow-sm transition active:scale-95 cursor-pointer"
-								>
-									Top Up
-								</button>
-							</div>
-							<p className="text-[9px] opacity-80">
-								Includes ₦2,500 promo credit
-							</p>
-						</div>
-
-						<div>
-							<label className="text-[9px] font-bold text-muted-grey block mb-2 uppercase">
-								Saved Payment Methods
-							</label>
-							<div className="space-y-2">
-								<div className="flex items-center justify-between p-3 border border-emerald-deep/15 rounded-xl bg-white">
-									<div className="flex items-center gap-3">
-										<div className="w-8 h-6 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center text-[8px] font-black text-neutral-600">
-											VISA
-										</div>
-										<div>
-											<div className="font-bold text-xs text-ink-deep">
-												•••• 4242
-											</div>
-											<div className="text-[9px] text-muted-grey">
-												Expires 12/28
-											</div>
-										</div>
-									</div>
-									<span className="text-[9px] font-bold text-emerald-deep uppercase bg-emerald-deep/10 px-2 py-0.5 rounded">
-										Default
-									</span>
-								</div>
-								<button
-									type="button"
-									className="w-full p-3 border border-dashed border-emerald-deep/30 rounded-xl bg-emerald-deep/5 text-emerald-deep text-xs font-bold transition hover:bg-emerald-deep/10 active:scale-95 cursor-pointer"
-								>
-									+ Add New Card
-								</button>
-							</div>
-						</div>
-					</div>
-				</GlassPanel>
-
-				{/* Coupons & Loyalty */}
-				<GlassPanel className="p-6">
-					<h3 className="font-display font-bold text-sm text-emerald-strong mb-4 flex items-center gap-1.5">
-						<Gift className="w-4.5 h-4.5 text-emerald-deep" />
-						Coupons & Loyalty
-					</h3>
-
-					<div className="grid grid-cols-2 gap-3 mb-4">
-						<div className="bg-mango-warm/10 p-4 rounded-xl border border-mango-warm/20 flex flex-col justify-center">
-							<span className="text-[20px] font-black text-emerald-strong">
-								2
-							</span>
-							<span className="text-[10px] font-bold text-emerald-strong mt-1 leading-tight">
-								Active Promo Vouchers
-							</span>
-						</div>
-						<div className="bg-emerald-deep/10 p-4 rounded-xl border border-emerald-deep/15 flex flex-col justify-center">
-							<span className="text-[20px] font-black text-emerald-strong">
-								450
-							</span>
-							<span className="text-[10px] font-bold text-emerald-strong mt-1 leading-tight">
-								Loyalty Points
-							</span>
-						</div>
-					</div>
-
-					<button
-						type="button"
-						className="w-full py-2.5 bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-xl text-xs font-bold text-ink-deep transition active:scale-95 cursor-pointer"
-					>
-						View All Rewards
-					</button>
 				</GlassPanel>
 
 				{/* Appearance & Interface Settings */}
@@ -880,7 +791,15 @@ export const ProfileView: React.FC = () => {
 								return (
 									<div
 										key={locId}
+										role="button"
+										tabIndex={0}
 										onClick={() => setSelectedLocation(locId)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												setSelectedLocation(locId);
+											}
+										}}
 										className={`px-3.5 py-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition flex items-center justify-between gap-3 ${
 											isDefault
 												? "bg-emerald-deep/6 border-emerald-deep text-emerald-strong font-bold"
@@ -924,10 +843,11 @@ export const ProfileView: React.FC = () => {
 					</p>
 
 					<div className="mb-6">
-						<label className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
+						<label htmlFor="profile_campus_select" className="text-[9px] font-bold text-muted-grey block mb-1.5 uppercase">
 							Active Campus Node
 						</label>
 						<select
+							id="profile_campus_select"
 							value={selectedCampus}
 							onChange={(e) => {
 								setSelectedCampus(e.target.value);
