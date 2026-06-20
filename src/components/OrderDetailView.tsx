@@ -3,6 +3,7 @@ import { useMealDirect } from '../store';
 import { PRESET_LOCATIONS, DELIVERY_SLOTS, VENDORS, MENU_ITEMS } from '../mockData';
 import { AppShell, GlassPanel, Currency, LoadingSkeleton } from './CommonUI';
 import { DeliveredAnimation } from './DeliveredAnimation';
+import { LiveTrackerPip } from './LiveTrackerPip';
 import {
   ArrowLeft,
   Clock,
@@ -359,6 +360,9 @@ export const OrderDetailView: React.FC<OrderDetailProps> = ({ orderId }) => {
             <Currency kobo={order.totalKobo} className="text-base font-black text-emerald-strong select-all" />
           </div>
         </GlassPanel>
+
+        {/* Picture in Picture Live Tracker Widget */}
+        <LiveTrackerPip order={order} />
       </section>
 
       {/* 2. Interactive simulated orders cycle-stepper (AMAZING FOR DEMONSTRATIONS!) */}
@@ -537,7 +541,7 @@ export const OrderDetailView: React.FC<OrderDetailProps> = ({ orderId }) => {
         {/* Right Segments Meta panel */}
         <div className="space-y-6">
           <GlassPanel className="p-5 text-xs bg-neutral-50/50 border border-emerald-deep/10 space-y-4">
-            <h4 className="font-display font-bold text-[#10231C] border-b border-neutral-200/60 pb-2.5">Academic Kitchen Partner</h4>
+            <h4 className="font-display font-bold text-ink-deep border-b border-neutral-200/60 pb-2.5">Academic Kitchen Partner</h4>
             
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-neutral-100">
@@ -551,7 +555,7 @@ export const OrderDetailView: React.FC<OrderDetailProps> = ({ orderId }) => {
           </GlassPanel>
 
           <GlassPanel className="p-5 text-xs bg-neutral-50/50 border border-emerald-deep/10 space-y-3">
-            <h4 className="font-display font-medium text-xs text-[#10231C] border-b border-neutral-200/60 pb-2.5">Dispatch schedule Metadata</h4>
+            <h4 className="font-display font-medium text-xs text-ink-deep border-b border-neutral-200/60 pb-2.5">Dispatch schedule Metadata</h4>
             
             <div>
               <span className="text-[9px] text-[#617069] uppercase font-semibold">Location Desk</span>
@@ -568,7 +572,7 @@ export const OrderDetailView: React.FC<OrderDetailProps> = ({ orderId }) => {
           {/* Active client feedback review summary */}
           {order.hasReview && (
             <GlassPanel className="p-5 text-xs bg-amber-500/5 border border-amber-500/10 space-y-3 animate-fade-in">
-              <h4 className="font-display font-medium text-xs text-[#10231C] border-b border-emerald-deep/10 pb-2 flex items-center gap-1 font-black">
+              <h4 className="font-display font-medium text-xs text-ink-deep border-b border-emerald-deep/10 pb-2 flex items-center gap-1 font-black">
                 <Star className="w-4 h-4 fill-mango-warm text-mango-warm" />
                 <span>Your Dining Review</span>
               </h4>

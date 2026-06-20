@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useMealDirect } from '../store';
 import { CAMPUSES, PRESET_LOCATIONS, DELIVERY_SLOTS, VENDORS, isSlotAvailable, MENU_ITEMS } from '../mockData';
-import { AppShell, GlassPanel, Currency } from './CommonUI';
-import { LoadingSkeleton } from './LoadingSkeleton';
+// First import Skeleton
+import { AppShell, GlassPanel, Currency, Skeleton } from './CommonUI';
+// ... remove LoadingSkeleton import if possible or just ignore it.
 import { PullToRefresh } from './PullToRefresh';
 import {
   Calendar,
@@ -241,7 +242,7 @@ export const HomeView: React.FC = () => {
             {/* Left sliders control */}
             <div className="flex-1 space-y-5">
               <div>
-                <h3 className="font-display font-medium text-sm text-[#10231C] font-bold flex items-center gap-1.5">
+                <h3 className="font-display font-medium text-sm text-ink-deep font-bold flex items-center gap-1.5">
                   <Sliders className="w-4.5 h-4.5 text-emerald-deep" />
                   <span>Live Dispatch Health & Arrival Estimator</span>
                 </h3>
@@ -271,11 +272,11 @@ export const HomeView: React.FC = () => {
                 />
                 <div className="text-[9px] text-muted-grey font-semibold">
                   {orderVolume < 20 ? (
-                    <span className="text-[#16845B]">📗 Highly Fluid • Quick kitchen turnaround</span>
+                    <span className="text-emerald-deep">📗 Highly Fluid • Quick kitchen turnaround</span>
                   ) : orderVolume <= 40 ? (
-                    <span className="text-[#F3B33D]">📙 Steady Volume • Moderate queuing delay</span>
+                    <span className="text-mango-warm">📙 Steady Volume • Moderate queuing delay</span>
                   ) : (
-                    <span className="text-[#B42318] animate-pulse">⚠️ Peak Rush Congestion • Standard queuing rules apply</span>
+                    <span className="text-red-500 animate-pulse">⚠️ Peak Rush Congestion • Standard queuing rules apply</span>
                   )}
                 </div>
               </div>
@@ -420,7 +421,7 @@ export const HomeView: React.FC = () => {
                 </span>
 
                 <span className={`text-[10px] font-bold ${
-                  !isAvail ? 'text-[#B42318]' : isSelected ? 'text-white/90' : 'text-[#16845B]'
+                  !isAvail ? 'text-red-500' : isSelected ? 'text-white/90' : 'text-emerald-deep'
                 }`}>
                   {!isAvail ? 'CLOSED' : isSelected ? 'ACTIVE' : 'OPEN'}
                 </span>
@@ -469,7 +470,35 @@ export const HomeView: React.FC = () => {
 
         {/* Dynamic Inner Catalog Display */}
         {isLoading ? (
-          <LoadingSkeleton.Card count={3} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((idx) => (
+              <div
+                key={`home-skel-${idx}`}
+                className="bg-white dark:bg-neutral-900 rounded-[24px] border border-neutral-100 dark:border-neutral-800 overflow-hidden shadow-sm flex flex-col justify-between"
+              >
+                <div>
+                  <div className="h-44 w-full relative overflow-hidden bg-neutral-50 dark:bg-neutral-800">
+                    <Skeleton className="w-full h-full rounded-none" />
+                  </div>
+                  <div className="p-5">
+                    <Skeleton className="w-16 h-4 rounded mt-1 mb-3" />
+                    <Skeleton className="h-5 w-3/4 rounded mb-3" />
+                    <div className="space-y-2 mt-2">
+                      <Skeleton className="h-3 w-full rounded" />
+                      <Skeleton className="h-3 w-5/6 rounded" />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-5 pt-0">
+                  <div className="flex gap-2 mb-4">
+                    <Skeleton className="h-5 w-12 rounded-md" />
+                    <Skeleton className="h-5 w-16 rounded-md" />
+                  </div>
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : activeCatalogTab === 'vendors' ? (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -481,7 +510,7 @@ export const HomeView: React.FC = () => {
               </div>
               <button
                 onClick={() => navigateTo('/vendors')}
-                className="text-[10px] font-black tracking-widest text-[#16845B] uppercase hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-[10px] font-black tracking-widest text-emerald-deep uppercase hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>See Grid View</span>
                 <ChevronRight className="w-4 h-4" />
@@ -504,7 +533,7 @@ export const HomeView: React.FC = () => {
                           referrerPolicy="no-referrer"
                           className="w-full h-full object-cover transition duration-300 hover:scale-105"
                         />
-                        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-[#F3B33D] flex items-center gap-1 shadow-sm border border-ink-deep/5">
+                        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-mango-warm flex items-center gap-1 shadow-sm border border-ink-deep/5">
                           ★ <span className="numeric-tabular text-ink-deep font-bold">{v.rating.toFixed(1)}</span>
                           <span className="text-muted-grey">({v.reviewCount})</span>
                         </div>
@@ -512,7 +541,7 @@ export const HomeView: React.FC = () => {
 
                       <div className="p-5">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="px-2 py-0.5 bg-[#16845B]/10 text-[#16845B] text-[9px] font-bold rounded-md">CERTIFIED</span>
+                          <span className="px-2 py-0.5 bg-success/10 text-success text-[9px] font-bold rounded-md">CERTIFIED</span>
                         </div>
                         <h4 className="font-display font-bold text-base text-ink-deep leading-normal">{v.name}</h4>
                         <p className="text-[11px] text-muted-grey line-clamp-2 mt-1 leading-relaxed">
@@ -603,7 +632,7 @@ export const HomeView: React.FC = () => {
                               <Heart className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
-                          <p className="text-[10px] text-[#16845B] font-bold mt-0.5">
+                          <p className="text-[10px] text-emerald-deep font-bold mt-0.5">
                             at {vendorObj?.name || 'Kitchen partner'}
                           </p>
                           <p className="text-[10px] text-muted-grey mt-1 line-clamp-1">

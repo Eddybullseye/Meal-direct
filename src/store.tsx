@@ -9,7 +9,8 @@ import {
   Escalation,
   Review,
   RoutePath,
-  OrderQuote
+  OrderQuote,
+  MenuItemReview
 } from './types';
 import { CAMPUSES, PRESET_LOCATIONS, DELIVERY_SLOTS, VENDORS, MENU_ITEMS } from './mockData';
 import { triggerVibration, VIBE_PATTERNS } from './utils/vibe';
@@ -19,7 +20,13 @@ interface RouterState {
   params: Record<string, string>;
 }
 
+export type Theme = 'light' | 'dark' | 'system';
+
 interface MealDirectContextType {
+  // Appearance
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+
   // Session / User Profile
   user: UserProfile | null;
   onboardingData: { phone: string; campusId: string; locationId: string } | null;
@@ -70,6 +77,8 @@ interface MealDirectContextType {
   // Reviews
   reviews: Review[];
   createReview: (orderId: string, rating: number, comment: string) => void;
+  menuItemReviews: MenuItemReview[];
+  createMenuItemReview: (menuItemId: string, rating: number, comment: string, userName?: string) => void;
 
   // Notifications
   notifications: Notification[];
@@ -223,6 +232,35 @@ export function computeCustomMealPriceKobo(
         customSubtotal += 80000; // ₦800
       }
     }
+  } else if (menuItemId === 'item_bake_custom') {
+    // Mr Bunmi pricing: Bakery goods are ₦600 each
+    effectiveFoods.forEach(sel => {
+      customSubtotal += 60000 * sel.spoons;
+    });
+
+    // Extras/Hotdogs/Cakes
+    effectiveProteins.forEach(sel => {
+      const norm = sel.type.toLowerCase();
+      let price = 30000;
+      if (norm.includes('red velvet')) price = 80000;
+      else if (norm.includes('vanilla')) price = 70000;
+      else if (norm.includes('spring roll')) price = 20000;
+      else if (norm.includes('puff puff')) price = 15000;
+      else if (norm.includes('hot dog')) price = 30000;
+      customSubtotal += price * (sel.qty || 1);
+    });
+  } else if (menuItemId === 'item_akara_custom') {
+    // Akara Spot pricing
+    effectiveFoods.forEach(sel => {
+      const norm = sel.type.toLowerCase();
+      let price = 10000; // wrap of cold eko is ₦100
+      if (norm.includes('bread')) price = 50000; // sweet agege bread is ₦500
+      customSubtotal += price * sel.spoons;
+    });
+
+    effectiveProteins.forEach(sel => {
+      customSubtotal += 10000 * (sel.qty || 1); // Akara, Fried Yam Dundun, Fried Sweet Potatoes are ₦100 each
+    });
   } else {
     return 0; // Not a custom meal item
   }
@@ -234,6 +272,43 @@ export function computeCustomMealPriceKobo(
 }
 
 export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Appearance State
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const saved = localStorage.getItem('md_theme');
+    return (saved as Theme) || 'system';
+  });
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('md_theme', newTheme);
+  };
+
+  useEffect(() => {
+    const applyTheme = () => {
+      let isDark = false;
+      if (theme === 'dark') {
+        isDark = true;
+      } else if (theme === 'system') {
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => applyTheme();
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
+    }
+  }, [theme]);
+
   // Offline State
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => new Date().toLocaleTimeString());
@@ -278,19 +353,7 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [notifications, setNotifications] = useState<Notification[]>(() => {
     const saved = localStorage.getItem('md_notifications');
-    if (saved) return JSON.parse(saved);
-
-    // Initial warm greetings
-    return [
-      {
-        id: 'noti_1',
-        title: 'Welcome to Meal Direct! 🥗',
-        message: 'Order nutritious and delicious takeaway boxes delivered straight to your preset Venite University halls and departments.',
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        read: false,
-        type: 'general'
-      }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [escalations, setEscalations] = useState<Escalation[]>(() => {
@@ -303,9 +366,14 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [menuItemReviews, setMenuItemReviews] = useState<MenuItemReview[]>(() => {
+    const saved = localStorage.getItem('md_menu_item_reviews');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [savedLocationIds, setSavedLocationIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('md_saved_location_ids');
-    return saved ? JSON.parse(saved) : ['loc_hall1', 'loc_fac_sci'];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [favoriteItemIds, setFavoriteItemIds] = useState<string[]>(() => {
@@ -324,9 +392,10 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem('md_notifications', JSON.stringify(notifications));
     localStorage.setItem('md_escalations', JSON.stringify(escalations));
     localStorage.setItem('md_reviews', JSON.stringify(reviews));
+    localStorage.setItem('md_menu_item_reviews', JSON.stringify(menuItemReviews));
     localStorage.setItem('md_saved_location_ids', JSON.stringify(savedLocationIds));
     localStorage.setItem('md_favorite_item_ids', JSON.stringify(favoriteItemIds));
-  }, [user, cart, orders, notifications, escalations, reviews, savedLocationIds, favoriteItemIds]);
+  }, [user, cart, orders, notifications, escalations, reviews, menuItemReviews, savedLocationIds, favoriteItemIds]);
 
   const toggleSaveLocation = (locationId: string) => {
     triggerVibration(VIBE_PATTERNS.MEDIUM);
@@ -1011,6 +1080,19 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     addNotification('Review Logged ⭐', 'Thank you for grading the meal! Your feedback shapes launch vendor scorecards.', 'general', orderId);
   };
 
+  const createMenuItemReview = (menuItemId: string, rating: number, comment: string, userName?: string) => {
+    const newRev: MenuItemReview = {
+      id: 'mr_' + Date.now(),
+      menuItemId,
+      rating,
+      comment,
+      userName: userName || user?.fullName || 'Anonymous Student',
+      createdAt: new Date().toISOString()
+    };
+    setMenuItemReviews(prev => [newRev, ...prev]);
+    addNotification('Meal Feedback Logged ⭐', 'Thank you for sharing your feedback on this single meal helper item!', 'general');
+  };
+
   // Notification actions
   const addNotification = (title: string, message: string, type: Notification['type'], orderId?: string) => {
     const noti: Notification = {
@@ -1047,6 +1129,8 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   return (
     <MealDirectContext.Provider
       value={{
+        theme,
+        setTheme,
         user,
         onboardingData,
         signIn,
@@ -1081,6 +1165,8 @@ export const MealDirectProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         reviews,
         createReview,
+        menuItemReviews,
+        createMenuItemReview,
 
         notifications,
         markNotificationRead,

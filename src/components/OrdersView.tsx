@@ -5,6 +5,7 @@ import { LoadingSkeleton } from './LoadingSkeleton';
 import { PullToRefresh } from './PullToRefresh';
 import { Calendar, Clock, MapPin, Receipt, Star, MessageSquarePlus, ShieldCheck, ChevronRight, Filter, HelpCircle, RotateCcw } from 'lucide-react';
 import { OrderStatus } from '../types';
+import emptyOrdersIllustration from '../assets/images/empty_orders_illustration_1781791218965.jpg';
 
 export const OrdersView: React.FC = () => {
   const { orders, navigateTo, reorderOrder, reviews } = useMealDirect();
@@ -133,10 +134,12 @@ export const OrdersView: React.FC = () => {
         {isLoading ? (
           <LoadingSkeleton.ListRow count={3} />
         ) : filteredOrders.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl border border-emerald-deep/8 flex flex-col items-center justify-center p-6" id="orders_empty_card">
-            <Receipt className="w-10 h-10 text-muted-grey opacity-40 mb-3" />
-            <span className="text-xs font-bold text-emerald-strong">No Registered Orders Registered In This Filter</span>
-            <p className="text-[10px] text-muted-grey mt-0.5 max-w-xs leading-relaxed">
+          <div className="text-center py-12 bg-white rounded-3xl border border-emerald-deep/8 flex flex-col items-center justify-center p-6 max-w-lg mx-auto" id="orders_empty_card">
+            <div className="w-48 h-32 mb-6 rounded-2xl overflow-hidden shadow-sm relative">
+                <img src={emptyOrdersIllustration} alt="No Orders" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-lg font-black text-emerald-strong">No Registered Orders In This Filter</span>
+            <p className="text-xs text-muted-grey mt-2 max-w-sm leading-relaxed">
               When student orders are authorized through checkout, they display here with real-time status updates.
             </p>
           </div>

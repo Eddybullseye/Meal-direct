@@ -12,7 +12,8 @@ export const CheckoutView: React.FC = () => {
     getCartQuote,
     createOrder,
     payOrder,
-    isOnline
+    isOnline,
+    setCurrentDateTimeLocation
   } = useMealDirect();
 
   // Quote
@@ -127,16 +128,34 @@ export const CheckoutView: React.FC = () => {
               <h3 className="font-display font-bold text-sm text-emerald-strong mb-4">Takeway Booking Breakdown</h3>
 
               <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-neutral-50 rounded-xl text-emerald-deep border border-neutral-100">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-emerald-strong">Dispatch Destination Terminal</h4>
-                    <p className="text-[11px] text-muted-grey mt-0.5">{activeLocation ? activeLocation.name : 'Not set'}</p>
-                    <span className="inline-block mt-1 text-[9px] bg-emerald-deep/5 px-2 py-0.5 text-emerald-strong font-semibold rounded-md border border-emerald-deep/8">
-                      {activeLocation?.zone}
-                    </span>
+                <div className="flex flex-col gap-3 p-4 bg-emerald-deep/5 rounded-2xl border border-emerald-deep/10">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-white rounded-xl text-emerald-deep border border-neutral-100/80 shadow-xs">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-xs font-black text-emerald-strong uppercase tracking-wider">Configure Delivery Destination</h4>
+                      <p className="text-[10px] text-muted-grey mt-0.5">Choose your delivery drop-off terminal/location for this order:</p>
+                      
+                      <div className="mt-2.5 relative">
+                        <select
+                          value={cart?.deliveryLocationId || user?.defaultLocationId}
+                          onChange={(e) => {
+                            if (cart) {
+                              setCurrentDateTimeLocation(cart.deliveryDate, cart.deliverySlotId, e.target.value);
+                            }
+                          }}
+                          className="w-full text-xs font-bold text-ink-deep bg-white border border-neutral-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-emerald-deep focus:border-emerald-deep cursor-pointer"
+                          id="checkout_location_picker"
+                        >
+                          {PRESET_LOCATIONS.map(loc => (
+                            <option key={loc.id} value={loc.id}>
+                              {loc.name} ({loc.zone})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

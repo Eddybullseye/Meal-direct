@@ -131,152 +131,26 @@ export const MENU_ITEMS: MenuItem[] = [
     availableQuantity: 100
   },
 
-  // Mr Bunmi menu items
+  // Mr Bunmi custom builder item (only)
   {
-    id: 'item_bake_sausage',
-    name: 'Sausage roll',
-    description: 'Golden flaky pastry wrapped around a delicious seasoned sausage roll.',
-    priceKobo: 60000, // ₦600.00
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 50
-  },
-  {
-    id: 'item_bake_meatpie',
-    name: 'Meat pie',
-    description: 'Freshly-baked buttery pastry stuffed with seasoned ground beef, potatoes, and diced carrots.',
-    priceKobo: 60000, // ₦600.00
-    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 45
-  },
-  {
-    id: 'item_bake_chickenpie',
-    name: 'Chicken pie',
-    description: 'Buttery shortcrust pastry filled with delicious shredded chicken breast and savory vegetable gravy.',
-    priceKobo: 60000, // ₦600.00
-    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 40
-  },
-  {
-    id: 'item_bake_hotdog',
-    name: 'Hot dog',
-    description: 'Juicy grilled beef sausage inside a toasted soft bun, drizzled with mustard and sweet relish ketchup.',
-    priceKobo: 30000, // ₦300.00
-    imageUrl: 'https://images.unsplash.com/photo-1541248163665-21d78ebd55bf?auto=format&fit=crop&q=80&w=300',
-    category: 'Quick Bites',
-    availableQuantity: 25
-  },
-  {
-    id: 'item_bake_puffpuff',
-    name: 'Puff puff',
-    description: 'Sweet, fluffy fried dough balls dusted with sugar - a classic campus favorite.',
-    priceKobo: 15000, // ₦150.00
-    imageUrl: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&q=80&w=300',
-    category: 'Quick Bites',
+    id: 'item_bake_custom',
+    name: 'Mr Bunmi Custom Pastry & Cakes Box',
+    description: 'Assemble your custom compostable bakery box. Select premium fresh pastries (Sausage roll, meat pies) and sweet options like Red Velvet or Sponge cake slices.',
+    priceKobo: 0, // Calculated dynamically
+    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=300',
+    category: 'Mains',
     availableQuantity: 100
   },
-  {
-    id: 'item_bake_fishpie',
-    name: 'Fish pie',
-    description: 'Savory deep-fried puff pastry pocket packed with spiced shredded mackerel.',
-    priceKobo: 60000, // ₦600.00
-    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 30
-  },
-  {
-    id: 'item_bake_springroll',
-    name: 'Spring roll',
-    description: 'Crunchy golden light wrappers stuffed with mixed shredded vegetables and minced chicken.',
-    priceKobo: 20000, // ₦200.00
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300',
-    category: 'Quick Bites',
-    availableQuantity: 35
-  },
-  {
-    id: 'item_bake_cake1',
-    name: 'Slice of Vanilla Sponge Cake',
-    description: 'Thick moist slice of hand-whipped vanilla butter sponge cake.',
-    priceKobo: 70000, // ₦700.00
-    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 20
-  },
-  {
-    id: 'item_bake_cake2',
-    name: 'Slice of Red Velvet Cake',
-    description: 'Premium rich chocolate red velvet cake slice topped with smooth sweet cream cheese frosting.',
-    priceKobo: 80000, // ₦800.00
-    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 15
-  },
-  {
-    id: 'item_bake_eggroll',
-    name: 'Egg roll',
-    description: 'Hard-boiled whole egg wrapped inside golden crisp yeast dough.',
-    priceKobo: 60000, // ₦600.00
-    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 22
-  },
-  {
-    id: 'item_bake_fishroll',
-    name: 'Fish roll',
-    description: 'Spiced flaky roll filled with savory minced mackerel fish stuffing.',
-    priceKobo: 60000, // ₦600.00
-    imageUrl: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&q=80&w=300',
-    category: 'Pastries',
-    availableQuantity: 20
-  },
 
-  // Akara spot menu items
+  // Akara Spot custom builder item (only)
   {
-    id: 'item_akara_akara',
-    name: 'Golden Fried Akara',
-    description: 'Crispy fried bean cake made from pure ground brown beans, spicy onions, and chillies.',
-    priceKobo: 10000, // ₦100.00 per unit
+    id: 'item_akara_custom',
+    name: 'Akara Spot Fry Box (Custom Combo)',
+    description: 'Build your hot Akara dundun sweet potato combo. Select your bread or cold eko companion and choose your crispy fried bean cakes, dundun or potato bites.',
+    priceKobo: 0, // Calculated dynamically
     imageUrl: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?auto=format&fit=crop&q=80&w=300',
-    category: 'Hot Mains',
+    category: 'Mains',
     availableQuantity: 150
-  },
-  {
-    id: 'item_akara_bread',
-    name: 'Sweet Agege Bread',
-    description: 'Freshly baked soft Nigerian pull-apart sweet bread - perfect companion for Akara.',
-    priceKobo: 50000, // ₦500.00 per unit
-    imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=300',
-    category: 'Sides & Bread',
-    availableQuantity: 40
-  },
-  {
-    id: 'item_akara_potato',
-    name: 'Fried Sweet Potato',
-    description: 'Soft crisp fried sweet potato slices salted to perfection.',
-    priceKobo: 10000, // ₦100.00 per unit
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&q=80&w=300',
-    category: 'Sides & Bread',
-    availableQuantity: 80
-  },
-  {
-    id: 'item_akara_yam',
-    name: 'Fried Yam Slice (Dundun)',
-    description: 'Crispy oil-fried white yam fingers seasoned lightly with local sea salt.',
-    priceKobo: 10000, // ₦100.00 per unit
-    imageUrl: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&q=80&w=300',
-    category: 'Sides & Bread',
-    availableQuantity: 90
-  },
-  {
-    id: 'item_akara_eko',
-    name: 'Wrap of Cold Eko (Solid Pap)',
-    description: 'Cold solid corn starch pudding wrapped traditionally in plantain leaves.',
-    priceKobo: 10000, // ₦100.00 per unit
-    imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300',
-    category: 'Sides & Bread',
-    availableQuantity: 50
   }
 ];
 

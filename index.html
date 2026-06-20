@@ -2,12 +2,25 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Meal Direct - Premium food delivery for Venite University" />
+    <title>Meal Direct - Venite University</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://api.iconify.design/lucide:utensils.svg?color=%2310b981" />
   </head>
-  <body>
+  <body class="antialiased bg-sand-light selection:bg-mango-warm/30">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.log('Service Worker registration failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
 

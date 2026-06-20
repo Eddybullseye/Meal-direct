@@ -31,6 +31,12 @@ export const Currency: React.FC<{ kobo: number; className?: string }> = ({ kobo,
 };
 
 // Skeleton loaders
+export const Skeleton: React.FC<{
+  className?: string;
+}> = ({ className = '' }) => {
+  return <div className={`skeleton-pulse ${className}`} />;
+};
+
 export const LoadingSkeleton: React.FC<{ r?: string; h?: string; w?: string; className?: string }> = ({
   r = 'rounded-xl',
   h = 'h-6',
@@ -230,7 +236,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, activeTab }) => {
               <div className="w-4.5 h-4.5 border-3 border-mango-warm rounded-full" />
             </div>
             <div>
-              <h1 className="font-display font-black text-base leading-tight tracking-tight text-[#10231C] flex items-center gap-1.5">
+              <h1 className="font-display font-black text-base leading-tight tracking-tight text-ink-deep flex items-center gap-1.5">
                 Meal Direct
                 <span className="text-[9px] bg-mango-warm/20 text-[#B96A05] border border-mango-warm/30 rounded-md px-1.5 py-0.5 font-mono font-medium scale-90">
                   Customer
@@ -329,7 +335,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, activeTab }) => {
                     className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all duration-200 cursor-pointer ${
                       isActive
                         ? 'bg-emerald-deep text-white font-bold shadow-xl shadow-emerald-deep/20 scale-[1.01]'
-                        : 'text-muted-grey hover:bg-ink-deep/5 hover:text-[#10231C] hover:translate-x-1'
+                        : 'text-muted-grey hover:bg-ink-deep/5 hover:text-ink-deep hover:translate-x-1'
                     }`}
                   >
                     <div className="flex items-center gap-3">

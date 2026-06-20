@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useMealDirect } from '../store';
 import { VENDORS, isSlotAvailable, MENU_ITEMS, formatNGN } from '../mockData';
-import { AppShell, GlassPanel } from './CommonUI';
-import { LoadingSkeleton } from './LoadingSkeleton';
+import { AppShell, GlassPanel, Skeleton } from './CommonUI';
 import { Search, Store, Star, Filter, Heart, ChevronRight, XCircle, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -148,7 +147,7 @@ export const VendorsView: React.FC = () => {
               >
                 {suggestions.vendors.length > 0 && (
                   <div className="p-3">
-                    <span className="text-[10px] font-black tracking-widest text-[#16845B] bg-[#16845B]/5 px-2 py-0.5 rounded uppercase block mb-1.5">Matched Kitchens</span>
+                    <span className="text-[10px] font-black tracking-widest text-emerald-deep bg-emerald-deep/5 px-2 py-0.5 rounded uppercase block mb-1.5">Matched Kitchens</span>
                     <div className="space-y-1">
                       {suggestions.vendors.map(v => (
                         <div
@@ -164,7 +163,7 @@ export const VendorsView: React.FC = () => {
                             <div className="min-w-0">
                               <h5 className="text-[11.5px] font-bold text-ink-deep flex items-center gap-1.5">
                                 {v.name}
-                                <span className="text-[9px] text-[#F3B33D] font-bold">★ {v.rating.toFixed(1)}</span>
+                                <span className="text-[9px] text-mango-warm font-bold">★ {v.rating.toFixed(1)}</span>
                               </h5>
                               <p className="text-[10px] text-muted-grey truncate">{v.description}</p>
                             </div>
@@ -192,7 +191,7 @@ export const VendorsView: React.FC = () => {
 
                 {suggestions.dishes.length > 0 && (
                   <div className="p-3">
-                    <span className="text-[10px] font-black tracking-widest text-[#D38B00] bg-[#F3B33D]/8 px-2 py-0.5 rounded uppercase block mb-1.5">Suggested Dishes</span>
+                    <span className="text-[10px] font-black tracking-widest text-[#D38B00] bg-mango-warm/10 px-2 py-0.5 rounded uppercase block mb-1.5">Suggested Dishes</span>
                     <div className="space-y-1">
                       {suggestions.dishes.map(d => {
                         const vendorId = d.id.startsWith('item_grill') 
@@ -289,7 +288,36 @@ export const VendorsView: React.FC = () => {
       {/* 3. Render Catalog Cards */}
       <section id="vendors_render_stage">
         {isLoading ? (
-          <LoadingSkeleton.ListCard count={4} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((idx) => (
+              <div
+                key={`vendor-skel-${idx}`}
+                className="bg-white dark:bg-neutral-900 rounded-[24px] border border-neutral-100 dark:border-neutral-800 overflow-hidden shadow-sm flex flex-col md:flex-row h-full"
+              >
+                <div className="h-44 md:h-auto md:w-44 shrink-0 relative bg-neutral-50 dark:bg-neutral-800">
+                  <Skeleton className="w-full h-full rounded-none" />
+                </div>
+                <div className="p-5 flex flex-col flex-1">
+                  <div className="flex justify-between items-start mb-2">
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                    <Skeleton className="h-4 w-12 rounded" />
+                  </div>
+                  <Skeleton className="h-5 w-3/4 rounded mb-2" />
+                  <div className="space-y-1.5 mb-4">
+                    <Skeleton className="h-3 w-full rounded" />
+                    <Skeleton className="h-3 w-5/6 rounded" />
+                  </div>
+                  <div className="mt-auto space-y-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                      <Skeleton className="h-6 w-14 rounded-full" />
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filteredVendors.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border border-emerald-deep/8 flex flex-col items-center justify-center p-6" id="vendors_empty_state">
             <XCircle className="w-12 h-12 text-muted-grey opacity-40 mb-3" />
@@ -333,7 +361,7 @@ export const VendorsView: React.FC = () => {
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover transition duration-300 hover:scale-105"
                       />
-                      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-[#F3B33D] flex items-center gap-1 shadow-xs border border-ink-deep/5">
+                      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-mango-warm flex items-center gap-1 shadow-xs border border-ink-deep/5">
                         ★ <span className="numeric-tabular text-ink-deep font-bold">{v.rating.toFixed(1)}</span>
                       </div>
                     </div>
@@ -341,7 +369,7 @@ export const VendorsView: React.FC = () => {
                     <div className="p-5 flex-1 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 bg-[#16845B]/10 text-[#16845B] text-[9px] font-bold rounded-md">CERTIFIED</span>
+                          <span className="px-2 py-0.5 bg-success/10 text-success text-[9px] font-bold rounded-md">CERTIFIED</span>
                         </div>
                         <h4 className="font-display font-bold text-sm text-ink-deep leading-normal">{v.name}</h4>
                         <p className="text-[11px] text-muted-grey mt-1 leading-relaxed line-clamp-3">

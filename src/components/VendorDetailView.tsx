@@ -21,8 +21,29 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
     clearCart,
     navigateTo,
     favoriteItemIds,
-    toggleFavoriteItem
+    toggleFavoriteItem,
+    menuItemReviews,
+    createMenuItemReview
   } = useMealDirect();
+
+  // Rating and feedback states
+  const [ratingTemp, setRatingTemp] = useState<number>(5);
+  const [commentTemp, setCommentTemp] = useState<string>('');
+  const [customRatingTemp, setCustomRatingTemp] = useState<number>(5);
+  const [customCommentTemp, setCustomCommentTemp] = useState<string>('');
+
+  const getItemRatingStats = (itemId: string) => {
+    const itemRevs = (menuItemReviews || []).filter(r => r.menuItemId === itemId);
+    if (itemRevs.length === 0) {
+      let defaultStars = 4.5;
+      if (itemId === 'item_grill1') defaultStars = 4.8;
+      if (itemId === 'item_bake_custom') defaultStars = 4.6;
+      if (itemId === 'item_akara_custom') defaultStars = 4.7;
+      return { avg: defaultStars, count: Math.floor((itemId.charCodeAt(0) % 15) + 3), reviews: itemRevs };
+    }
+    const sum = itemRevs.reduce((acc, r) => acc + r.rating, 0);
+    return { avg: Number((sum / itemRevs.length).toFixed(1)), count: itemRevs.length, reviews: itemRevs };
+  };
 
   // Simulated API loading state
   const [isLoading, setIsLoading] = useState(true);
@@ -153,21 +174,25 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
   }).join(', ');
 
   const currentPlateCostKobo = React.useMemo(() => {
-    const isGrill = vendorId === 'ven_grill';
-    const builderId = isGrill ? 'item_grill5' : 'item_bistro_custom';
+    const builderId = 
+      vendorId === 'ven_grill' ? 'item_grill5' : 
+      vendorId === 'ven_bistro' ? 'item_bistro_custom' : 
+      vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom';
     return computeCustomMealPriceKobo(
       builderId,
       selectedFoods,
       selectedProteins,
-      isGrill ? customDrink : undefined
+      vendorId === 'ven_grill' ? customDrink : undefined
     );
   }, [vendorId, selectedFoods, selectedProteins, customDrink]);
 
   // Sync state once on mount or when vendorId shifts
   useEffect(() => {
-    if (vendorId === 'ven_grill' || vendorId === 'ven_bistro') {
-      const isGrill = vendorId === 'ven_grill';
-      const bItemId = isGrill ? 'item_grill5' : 'item_bistro_custom';
+    if (vendorId === 'ven_grill' || vendorId === 'ven_bistro' || vendorId === 'ven_bake' || vendorId === 'ven_akara') {
+      const bItemId = 
+        vendorId === 'ven_grill' ? 'item_grill5' : 
+        vendorId === 'ven_bistro' ? 'item_bistro_custom' : 
+        vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom';
       const existing = cart && cart.vendorId === vendorId
         ? cart.items.find(it => it.menuItemId === bItemId)
         : null;
@@ -176,7 +201,11 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
         if (existing.customFoodSelections && existing.customFoodSelections.length > 0) {
           setSelectedFoods(existing.customFoodSelections);
         } else {
-          setSelectedFoods([{ type: isGrill ? 'Jollof Rice' : 'White Rice', spoons: existing.customFoodSpoons || 3 }]);
+          const defaultFood = 
+            vendorId === 'ven_grill' ? 'Jollof Rice' : 
+            vendorId === 'ven_bistro' ? 'White Rice' : 
+            vendorId === 'ven_bake' ? 'Sausage roll' : 'Sweet Agege Bread';
+          setSelectedFoods([{ type: defaultFood, spoons: existing.customFoodSpoons || 3 }]);
         }
         if (existing.customProteinSelections && existing.customProteinSelections.length > 0) {
           setSelectedProteins(existing.customProteinSelections);
@@ -187,10 +216,19 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
         setCustomMealQty(existing.quantity || 1);
         setCustomPlasticSpoons(existing.spoonsCount || 1);
       } else {
+        const defaultFood = 
+          vendorId === 'ven_grill' ? 'Jollof Rice' : 
+          vendorId === 'ven_bistro' ? 'White Rice' : 
+          vendorId === 'ven_bake' ? 'Sausage roll' : 'Sweet Agege Bread';
+        const defaultProtein = 
+          vendorId === 'ven_grill' ? 'Beef' : 
+          vendorId === 'ven_bistro' ? 'Beef' : 
+          vendorId === 'ven_bake' ? 'Slice of Red Velvet Cake' : 'Golden Fried Akara';
+
         setSelectedFoods([
-          { type: isGrill ? 'Jollof Rice' : 'White Rice', spoons: 3 }
+          { type: defaultFood, spoons: 1 }
         ]);
-        setSelectedProteins([{ type: 'Beef', qty: 1 }]);
+        setSelectedProteins([{ type: defaultProtein, qty: 1 }]);
         setCustomDrink('None');
         setCustomMealQty(1);
         setCustomPlasticSpoons(1);
@@ -216,10 +254,9 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
   const [isCustomNutritionLoading, setIsCustomNutritionLoading] = useState(false);
 
   useEffect(() => {
-    if (vendorId !== 'ven_grill' && vendorId !== 'ven_bistro') return;
+    if (vendorId !== 'ven_grill' && vendorId !== 'ven_bistro' && vendorId !== 'ven_bake' && vendorId !== 'ven_akara') return;
     setIsCustomNutritionLoading(true);
 
-    const isGrill = vendorId === 'ven_grill';
     const foodsStr = selectedFoods.map(f => `${f.spoons} spoons of ${f.type}`).join(', ');
     const proteinsStr = selectedProteins.map(p => `${p.qty}x ${p.type}`).join(' and ');
     const textName = `${foodsStr} with ${proteinsStr} (${customDrink})`;
@@ -232,7 +269,7 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
         body: JSON.stringify({
           itemName: textName,
           description: textDesc,
-          vendorName: isGrill ? 'Venite Main cafeteria' : 'Matade',
+          vendorName: vendorId === 'ven_grill' ? 'Venite Main cafeteria' : vendorId === 'ven_bistro' ? 'Matade' : vendorId === 'ven_bake' ? 'Mr Bunmi' : 'Akara Spot',
           category: 'Mains'
         })
       })
@@ -418,8 +455,10 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
   };
 
   const handleSaveCustomMeal = () => {
-    const isGrill = vendorId === 'ven_grill';
-    const builderId = isGrill ? 'item_grill5' : 'item_bistro_custom';
+    const builderId = 
+      vendorId === 'ven_grill' ? 'item_grill5' : 
+      vendorId === 'ven_bistro' ? 'item_bistro_custom' : 
+      vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom';
     const builderItem = menuItems.find(it => it.id === builderId);
     if (!builderItem) return;
 
@@ -476,7 +515,7 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
       }
       
       // Calculate dynamic price if match builder items
-      if (item.menuItemId === 'item_grill5' || item.menuItemId === 'item_bistro_custom') {
+      if (item.menuItemId === 'item_grill5' || item.menuItemId === 'item_bistro_custom' || item.menuItemId === 'item_bake_custom' || item.menuItemId === 'item_akara_custom') {
         price = computeCustomMealPriceKobo(
           item.menuItemId,
           item.customFoodSelections,
@@ -548,7 +587,7 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
           </section>
 
           {/* 2. Group Categories with menu items list OR Custom Form for Cafeteria */}
-          {vendorId === 'ven_grill' || vendorId === 'ven_bistro' ? (
+          {vendorId === 'ven_grill' || vendorId === 'ven_bistro' || vendorId === 'ven_bake' || vendorId === 'ven_akara' ? (
             <div className="space-y-6 max-w-3xl mx-auto" id="custom_meal_builder_stage">
               <GlassPanel className="p-6 md:p-8 space-y-6 border border-emerald-deep/12 shadow-sm bg-white rounded-3xl">
                 <div className="flex items-center justify-between gap-4 mb-2 flex-wrap">
@@ -575,7 +614,7 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                       1. Customize Your Main Dishes (Up to 4 types)
                     </label>
                     <span className="text-[9.5px] font-medium text-muted-grey">
-                      Spoons: <strong className="text-ink-deep">{customFoodSpoons}</strong> total on plate
+                      Spoons/Pieces: <strong className="text-ink-deep">{customFoodSpoons}</strong> total on plate
                     </span>
                   </div>
 
@@ -594,7 +633,11 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(vendorId === 'ven_grill' 
                       ? ['White Rice', 'Jollof Rice', 'Fried Rice', 'Spaghetti', 'Jollof Spaghetti', 'Fufu', 'Semo', 'Beans'] 
-                      : ['Jollof Rice', 'White Rice', 'Ofada Rice', 'Peppersoup', 'Jollof Spaghetti', 'Semo', 'Eba']
+                      : vendorId === 'ven_bistro'
+                      ? ['Jollof Rice', 'White Rice', 'Ofada Rice', 'Peppersoup', 'Jollof Spaghetti', 'Semo', 'Eba']
+                      : vendorId === 'ven_bake'
+                      ? ['Sausage roll', 'Meat pie', 'Chicken pie', 'Fish pie', 'Egg roll', 'Fish roll']
+                      : ['Sweet Agege Bread', 'Wrap of Cold Eko (Solid Pap)']
                     ).map(dish => {
                       const selItem = selectedFoods.find(sf => sf.type === dish);
                       const spoonsVal = selItem ? selItem.spoons : 0;
@@ -612,14 +655,24 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                           basePricePerSpoon = 250;
                           unitLabel = 'piece';
                         }
-                      } else {
-                        // Matade (ven_bistro)
+                      } else if (vendorId === 'ven_bistro') {
                         if (dish.toLowerCase().includes('peppersoup')) {
                           basePricePerSpoon = 2500;
                           unitLabel = 'portion';
                         } else if (dish.toLowerCase().includes('semo') || dish.toLowerCase().includes('eba')) {
                           unitLabel = 'piece';
                         }
+                      } else if (vendorId === 'ven_bake') {
+                        basePricePerSpoon = 600; // ₦600 pastries
+                        unitLabel = 'piece';
+                      } else if (vendorId === 'ven_akara') {
+                        const norm = dish.toLowerCase();
+                        if (norm.includes('bread')) {
+                          basePricePerSpoon = 500; // ₦500 bread
+                        } else {
+                          basePricePerSpoon = 100; // ₦100 Eko wrap
+                        }
+                        unitLabel = 'piece';
                       }
 
                       return (
@@ -703,24 +756,42 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-black text-emerald-strong block uppercase tracking-wider">
-                      2. Select Your Preferred Proteins (Combos Allowed)
+                      2. Select Proteins / Sweet Add-ons & Sides
                     </label>
                     <span className="text-[9px] font-medium text-muted-grey">
-                      Total Protein Cost: <strong className="text-ink-deep">₦{
+                      Total Added Cost: <strong className="text-ink-deep">₦{
                         (selectedProteins.reduce((sum, p) => {
                           const isFish = p.type.toLowerCase().includes('fish');
-                          const unitPrice = isFish ? (p.price || 50000) : (vendorId === 'ven_grill' && p.type.toLowerCase().includes('egg') ? 30000 : 50000);
+                          let unitPrice = 50000;
+                          if (vendorId === 'ven_grill') {
+                            unitPrice = isFish ? (p.price || 50000) : (p.type.toLowerCase().includes('egg') ? 30000 : 50000);
+                          } else if (vendorId === 'ven_bistro') {
+                            unitPrice = p.type.toLowerCase().includes('egg') ? 30000 : 50000;
+                          } else if (vendorId === 'ven_bake') {
+                            const norm = p.type.toLowerCase();
+                            if (norm.includes('red velvet')) unitPrice = 80000;
+                            else if (norm.includes('vanilla')) unitPrice = 70000;
+                            else if (norm.includes('hot dog')) unitPrice = 30000;
+                            else if (norm.includes('spring roll')) unitPrice = 20000;
+                            else if (norm.includes('puff puff')) unitPrice = 15000;
+                          } else if (vendorId === 'ven_akara') {
+                            unitPrice = 10000;
+                          }
                           return sum + (unitPrice * p.qty);
                         }, 0) / 100).toFixed(0)
                       }</strong>
                     </span>
                   </div>
-                  <p className="text-[9.5px] text-muted-grey">Add as many as you want of any choice. Customize quantity of each protein below.</p>
+                  <p className="text-[9.5px] text-muted-grey">Add as many as you want of any choice. Customize quantity of each below.</p>
                   
                   <div className="space-y-2.5">
                     {(vendorId === 'ven_grill' 
                       ? ['Beef', 'Fish', 'Egg', 'Ponmo'] 
-                      : ['Beef', 'Fish(Cote)', 'Egg', 'Ponmo']
+                      : vendorId === 'ven_bistro'
+                      ? ['Beef', 'Fish(Cote)', 'Egg', 'Ponmo']
+                      : vendorId === 'ven_bake'
+                      ? ['Slice of Vanilla Sponge Cake', 'Slice of Red Velvet Cake', 'Hot dog', 'Puff puff', 'Spring roll']
+                      : ['Golden Fried Akara', 'Fried Sweet Potato', 'Fried Yam Slice (Dundun)']
                     ).map(proteinType => {
                       const existing = selectedProteins.find(p => p.type === proteinType);
                       const isSelected = !!existing;
@@ -731,6 +802,18 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                       if (vendorId === 'ven_grill') {
                         if (proteinType === 'Egg') unitPriceNaira = 300;
                         else if (proteinType === 'Fish') unitPriceNaira = existing?.price ? (existing.price / 100) : 500; // default fish price is 500
+                      } else if (vendorId === 'ven_bistro') {
+                        if (proteinType === 'Egg') unitPriceNaira = 300;
+                        else if (proteinType.includes('Fish')) unitPriceNaira = 500;
+                      } else if (vendorId === 'ven_bake') {
+                        const norm = proteinType.toLowerCase();
+                        if (norm.includes('red velvet')) unitPriceNaira = 800;
+                        else if (norm.includes('vanilla')) unitPriceNaira = 700;
+                        else if (norm.includes('hot dog')) unitPriceNaira = 300;
+                        else if (norm.includes('spring roll')) unitPriceNaira = 200;
+                        else if (norm.includes('puff puff')) unitPriceNaira = 150;
+                      } else if (vendorId === 'ven_akara') {
+                        unitPriceNaira = 100;
                       }
 
                       const isGrillFish = vendorId === 'ven_grill' && proteinType === 'Fish';
@@ -1011,11 +1094,95 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                   >
                     <ShoppingBag className="w-4 h-4 text-mango-warm" />
                     <span>
-                      {cart && cart.vendorId === vendorId && cart.items.some(it => it.menuItemId === (vendorId === 'ven_grill' ? 'item_grill5' : 'item_bistro_custom')) 
+                      {cart && cart.vendorId === vendorId && cart.items.some(it => it.menuItemId === (vendorId === 'ven_grill' ? 'item_grill5' : vendorId === 'ven_bistro' ? 'item_bistro_custom' : vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom')) 
                         ? 'Update Custom Plate in Cart' 
                         : 'Add Custom Plate to Cart'}
                     </span>
                   </motion.button>
+                </div>
+              </GlassPanel>
+
+              {/* Feedback Block for Builder items */}
+              <GlassPanel className="p-6 md:p-8 space-y-6 border border-emerald-deep/12 shadow-sm bg-white rounded-3xl mt-6">
+                <div className="border-t border-neutral-100 pt-4 space-y-3.5">
+                  <h4 className="font-display font-bold text-xs text-emerald-strong flex items-center justify-between">
+                    <span>Vendor Meal Selections & Ingredient Feedback</span>
+                    <span className="text-[10px] font-bold text-mango-warm flex items-center gap-0.5">
+                      ⭐ {getItemRatingStats(vendorId === 'ven_grill' ? 'item_grill5' : vendorId === 'ven_bistro' ? 'item_bistro_custom' : vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom').avg} ({getItemRatingStats(vendorId === 'ven_grill' ? 'item_grill5' : vendorId === 'ven_bistro' ? 'item_bistro_custom' : vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom').count} ratings)
+                    </span>
+                  </h4>
+
+                  {/* Leave Feedback Form */}
+                  <div className="bg-neutral-50 p-3.5 rounded-2xl border border-neutral-200/60 flex flex-col gap-2.5">
+                    <span className="text-[10px] font-bold text-emerald-strong block uppercase tracking-wider">Leave Feedback</span>
+                    
+                    {/* Clickable Star Rating Stepper */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9.5px] font-semibold text-muted-grey">Your Score:</span>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((starVal) => {
+                          const isLit = starVal <= customRatingTemp;
+                          return (
+                            <button
+                              key={starVal}
+                              type="button"
+                              onClick={() => setCustomRatingTemp(starVal)}
+                              className="text-amber-400 hover:scale-115 transition duration-150 cursor-pointer p-0.5 focus:outline-none"
+                              title={`Rate ${starVal} Stars`}
+                            >
+                              <Star className={`w-5 h-5 ${isLit ? 'text-mango-warm fill-mango-warm' : 'text-neutral-300'}`} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customCommentTemp}
+                        onChange={(e) => setCustomCommentTemp(e.target.value)}
+                        placeholder="E.g., Delicious plate choices, hot pastries, highly convenient custom plate builder!"
+                        className="flex-1 px-3 py-2 bg-white border border-neutral-200 rounded-xl text-xs placeholder:text-neutral-400 font-medium text-emerald-strong focus:outline-none focus:ring-1 focus:ring-emerald-deep"
+                        id="custom_meal_comment_input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!customCommentTemp.trim()) return;
+                          const activeBuilderId = 
+                            vendorId === 'ven_grill' ? 'item_grill5' : 
+                            vendorId === 'ven_bistro' ? 'item_bistro_custom' : 
+                            vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom';
+                          createMenuItemReview(activeBuilderId, customRatingTemp, customCommentTemp);
+                          setCustomCommentTemp('');
+                          setCustomRatingTemp(5);
+                        }}
+                        className="px-3.5 py-2 bg-emerald-deep hover:bg-emerald-strong text-white font-bold text-[10px] rounded-xl cursor-pointer"
+                      >
+                        Post Feedback
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Feed of Recent Reviews */}
+                  <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                    {getItemRatingStats(vendorId === 'ven_grill' ? 'item_grill5' : vendorId === 'ven_bistro' ? 'item_bistro_custom' : vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom').reviews && getItemRatingStats(vendorId === 'ven_grill' ? 'item_grill5' : vendorId === 'ven_bistro' ? 'item_bistro_custom' : vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom').reviews.length > 0 ? (
+                      getItemRatingStats(vendorId === 'ven_grill' ? 'item_grill5' : vendorId === 'ven_bistro' ? 'item_bistro_custom' : vendorId === 'ven_bake' ? 'item_bake_custom' : 'item_akara_custom').reviews.map((rev) => (
+                        <div key={rev.id} className="p-2.5 rounded-xl bg-neutral-50/50 border border-neutral-100 text-[10px] leading-relaxed">
+                          <div className="flex items-center justify-between font-bold col-span-2 mb-1">
+                            <span className="text-emerald-strong">{rev.userName}</span>
+                            <span className="text-mango-warm">{'★'.repeat(rev.rating)}</span>
+                          </div>
+                          <p className="text-muted-grey text-[9.5px] italic">"{rev.comment}"</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 bg-neutral-50/50 rounded-xl border border-dashed border-neutral-200">
+                        <p className="text-[10px] text-muted-grey italic">Leave the first review for this custom kitchen plate builder! ⭐</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </GlassPanel>
             </div>
@@ -1081,6 +1248,25 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                                 <p className="text-[10px] text-muted-grey line-clamp-2 mt-1 leading-relaxed">
                                   {item.description}
                                 </p>
+                                
+                                {/* Star rating display line */}
+                                {(() => {
+                                  const { avg, count } = getItemRatingStats(item.id);
+                                  return (
+                                    <div className="flex items-center gap-1.5 mt-2">
+                                      <div className="flex items-center gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star 
+                                            key={star} 
+                                            className={`w-3.5 h-3.5 ${star <= Math.round(avg) ? 'text-mango-warm fill-mango-warm font-bold' : 'text-neutral-200 fill-neutral-200'}`} 
+                                          />
+                                        ))}
+                                      </div>
+                                      <span className="text-[10px] font-bold text-ink-deep leading-none">{avg}</span>
+                                      <span className="text-[9px] text-muted-grey font-medium leading-none">({count} ratings)</span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
 
                               <div className="flex items-center justify-between mt-3">
@@ -1363,6 +1549,83 @@ export const VendorDetailView: React.FC<VendorDetailViewProps> = ({ vendorId }) 
                 >
                   +
                 </button>
+              </div>
+            </div>
+
+            {/* ITEM FEEDBACK AND RATINGS PANEL */}
+            <div className="border-t border-neutral-100 pt-4 mt-2 space-y-3.5">
+              <h4 className="font-display font-bold text-xs text-emerald-strong flex items-center justify-between">
+                <span>Meal Feedback & Student Reviews</span>
+                <span className="text-[10px] font-bold text-mango-warm flex items-center gap-0.5">
+                  ⭐ {getItemRatingStats(selectedItem.id).avg} ({getItemRatingStats(selectedItem.id).count} ratings)
+                </span>
+              </h4>
+
+              {/* Leave Rating section */}
+              <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-200/60 flex flex-col gap-2">
+                <span className="text-[9.5px] font-bold text-emerald-strong uppercase tracking-wide">Write a Review</span>
+                
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] font-semibold text-muted-grey">Your Score:</span>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((starVal) => {
+                      const isLit = starVal <= ratingTemp;
+                      return (
+                        <button
+                          key={starVal}
+                          type="button"
+                          onClick={() => setRatingTemp(starVal)}
+                          className="text-amber-400 hover:scale-110 transition duration-150 cursor-pointer p-0.5"
+                          title={`Rate ${starVal} Star`}
+                        >
+                          <Star className={`w-4 h-4 ${isLit ? 'text-mango-warm fill-mango-warm' : 'text-neutral-300'}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={commentTemp}
+                    onChange={(e) => setCommentTemp(e.target.value)}
+                    placeholder="E.g., Delicious plate choices, hot pastries!"
+                    className="flex-1 px-2.5 py-1.5 bg-white border border-neutral-200 rounded-lg text-xs placeholder:text-neutral-400 text-ink-deep font-medium focus:outline-none focus:ring-1 focus:ring-emerald-deep"
+                    id="standard_item_comment_input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!commentTemp.trim()) return;
+                      createMenuItemReview(selectedItem.id, ratingTemp, commentTemp);
+                      setCommentTemp('');
+                      setRatingTemp(5);
+                    }}
+                    className="px-3 py-1.5 bg-emerald-deep hover:bg-emerald-strong text-white font-bold text-[10px] rounded-lg cursor-pointer"
+                  >
+                    Post
+                  </button>
+                </div>
+              </div>
+
+              {/* Feed of Recent Reviews */}
+              <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                {getItemRatingStats(selectedItem.id).reviews && getItemRatingStats(selectedItem.id).reviews.length > 0 ? (
+                  getItemRatingStats(selectedItem.id).reviews.map((rev) => (
+                    <div key={rev.id} className="p-2 rounded-lg bg-neutral-50/50 border border-neutral-100 text-[10px] leading-relaxed">
+                      <div className="flex items-center justify-between font-bold mb-0.5">
+                        <span className="text-emerald-strong">{rev.userName}</span>
+                        <span className="text-mango-warm">{'★'.repeat(rev.rating)}</span>
+                      </div>
+                      <p className="text-muted-grey text-[9px] italic">"{rev.comment}"</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-3 bg-neutral-50/50 rounded-lg border border-dashed border-neutral-200">
+                    <p className="text-[9.5px] text-muted-grey italic">No student reviews yet. Be the first to leave one! ⭐</p>
+                  </div>
+                )}
               </div>
             </div>
 

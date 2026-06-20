@@ -14,6 +14,8 @@ import {
   Info
 } from 'lucide-react';
 
+import emptyCartIllustration from '../assets/images/empty_cart_illustration_1781791204037.jpg';
+
 export const CartView: React.FC = () => {
   const {
     cart,
@@ -37,17 +39,17 @@ export const CartView: React.FC = () => {
   if (!cart || cart.items.length === 0) {
     return (
       <AppShell activeTab="cart">
-        <div className="text-center py-16 bg-white rounded-3xl border border-emerald-deep/8 px-6" id="cart_empty_state">
-          <div className="w-16 h-16 rounded-full bg-emerald-deep/6 flex items-center justify-center mx-auto mb-4 text-emerald-strong">
-            <Trash2 className="w-8 h-8 opacity-60" />
+        <div className="text-center py-16 bg-white rounded-3xl border border-emerald-deep/8 px-6 overflow-hidden flex flex-col items-center justify-center max-w-lg mx-auto" id="cart_empty_state">
+          <div className="w-48 h-32 mb-6 rounded-2xl overflow-hidden shadow-sm relative">
+            <img src={emptyCartIllustration} alt="Empty Cart" className="w-full h-full object-cover" />
           </div>
-          <h2 className="font-display font-black text-lg text-emerald-strong">Your Takeaway Cart is Empty</h2>
-          <p className="text-xs text-muted-grey mt-1 max-w-sm mx-auto leading-relaxed">
+          <h2 className="font-display font-black text-xl text-emerald-strong">Your Takeaway Cart is Empty</h2>
+          <p className="text-xs text-muted-grey mt-2 max-w-sm mx-auto leading-relaxed">
             Choose a kitchen partner from the Home Dashboard and assemble your custom compostable box.
           </p>
           <button
             onClick={() => navigateTo('/home')}
-            className="mt-6 px-6 py-3 bg-emerald-deep hover:bg-emerald-strong text-white font-bold rounded-2xl text-xs cursor-pointer transition shadow-lg shadow-emerald-deep/15"
+            className="mt-6 px-6 py-3 bg-emerald-deep hover:bg-emerald-strong text-white font-bold rounded-2xl text-xs cursor-pointer transition active:scale-95 shadow-lg shadow-emerald-deep/15"
           >
             Browse Active Vendors
           </button>
@@ -259,28 +261,74 @@ export const CartView: React.FC = () => {
             )}
 
             <div className="space-y-3.5 text-xs">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50/50 border border-neutral-100">
-                <span className="text-muted-grey font-semibold">Dispatch location desk:</span>
-                <span className="font-bold text-emerald-strong flex items-center gap-1 text-right max-w-[200px] truncate">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-deep shrink-0" />
-                  {activeLocation ? activeLocation.name : 'Not set'}
-                </span>
+              <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-neutral-50/50 border border-neutral-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-grey font-semibold">Dispatch location desk:</span>
+                  <span className="font-bold text-emerald-strong flex items-center gap-1 text-right max-w-[200px] truncate">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-deep shrink-0" />
+                    {activeLocation ? activeLocation.name : 'Not set'}
+                  </span>
+                </div>
+                <select
+                  value={cart.deliveryLocationId}
+                  onChange={(e) => {
+                    setCurrentDateTimeLocation(cart.deliveryDate, cart.deliverySlotId, e.target.value);
+                  }}
+                  className="w-full text-[11px] font-bold text-ink-deep bg-white border border-neutral-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-emerald-deep cursor-pointer mt-1"
+                  id="cart_location_picker"
+                >
+                  {PRESET_LOCATIONS.map(loc => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name} ({loc.zone})
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50/50 border border-neutral-100">
-                <span className="text-muted-grey font-semibold">Delivery schedule slot:</span>
-                <span className="font-bold text-emerald-strong flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-emerald-deep" />
-                  {activeSlot ? activeSlot.label : 'Select Slot'}
-                </span>
+              <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-neutral-50/50 border border-neutral-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-grey font-semibold">Delivery schedule slot:</span>
+                  <span className="font-bold text-emerald-strong flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-emerald-deep" />
+                    {activeSlot ? activeSlot.label : 'Select Slot'}
+                  </span>
+                </div>
+                <select
+                  value={cart.deliverySlotId}
+                  onChange={(e) => {
+                    setCurrentDateTimeLocation(cart.deliveryDate, e.target.value, cart.deliveryLocationId);
+                  }}
+                  className="w-full text-[11px] font-bold text-ink-deep bg-white border border-neutral-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-emerald-deep cursor-pointer mt-1"
+                  id="cart_slot_picker"
+                >
+                  {DELIVERY_SLOTS.map(slot => (
+                    <option key={slot.id} value={slot.id}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50/50 border border-neutral-100">
-                <span className="text-muted-grey font-semibold">Target dispatch Date:</span>
-                <span className="font-bold text-emerald-strong flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-deep" />
-                  {cart.deliveryDate}
-                </span>
+              <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-neutral-50/50 border border-neutral-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-grey font-semibold">Target dispatch Date:</span>
+                  <span className="font-bold text-emerald-strong flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-deep" />
+                    {cart.deliveryDate}
+                  </span>
+                </div>
+                <input
+                  type="date"
+                  value={cart.deliveryDate}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setCurrentDateTimeLocation(e.target.value, cart.deliverySlotId, cart.deliveryLocationId);
+                    }
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full text-[11px] font-bold text-ink-deep bg-white border border-neutral-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-emerald-deep cursor-pointer mt-1"
+                  id="cart_date_picker"
+                />
               </div>
             </div>
 
@@ -288,7 +336,7 @@ export const CartView: React.FC = () => {
               onClick={() => navigateTo('/home')}
               className="mt-5 w-full py-3 bg-neutral-50 hover:bg-emerald-deep/5 border border-emerald-deep/12 rounded-xl text-xs font-bold text-emerald-strong cursor-pointer transition text-center"
             >
-              Modify Target Date, Slot or Terminal Location
+              ← Continue Shopping / Add More Items
             </button>
           </GlassPanel>
         </div>
